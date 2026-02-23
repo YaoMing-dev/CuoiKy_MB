@@ -46,7 +46,15 @@ export default function SettingsScreen() {
               await deleteUserAccount(user.uid);
               logout();
             } catch (e) {
-              Alert.alert('Error', 'Failed to delete account. Please try again.');
+              if (e.code === 'auth/requires-recent-login') {
+                Alert.alert(
+                  'Re-login Required',
+                  'For security, please log out and log back in before deleting your account.',
+                  [{ text: 'OK' }]
+                );
+              } else {
+                Alert.alert('Error', 'Failed to delete account. Please try again.');
+              }
             }
           },
         },
