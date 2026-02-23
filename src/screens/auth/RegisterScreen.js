@@ -11,6 +11,7 @@ import { validateEmail, validatePassword, getPasswordStrength, validateRequired 
 import { COLORS, SIZES } from '../../config/constants';
 
 const { height } = Dimensions.get('window');
+const HERO_HEIGHT = Math.min(height * 0.27, 220);
 
 export default function RegisterScreen({ navigation }) {
   const [name, setName] = useState('');
@@ -180,7 +181,7 @@ export default function RegisterScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  hero: { height: height * 0.27, justifyContent: 'flex-end', paddingBottom: SIZES.xl },
+  hero: { height: HERO_HEIGHT, justifyContent: 'flex-end', paddingBottom: SIZES.xl },
   heroContent: { alignItems: 'center', gap: 8 },
   logoCircle: {
     width: 60, height: 60, borderRadius: 30,

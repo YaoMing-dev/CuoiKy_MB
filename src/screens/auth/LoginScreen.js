@@ -15,6 +15,8 @@ import { COLORS, SIZES } from '../../config/constants';
 WebBrowser.maybeCompleteAuthSession();
 
 const { height } = Dimensions.get('window');
+// Cap hero height so it looks right on both mobile and web browser
+const HERO_HEIGHT = Math.min(height * 0.32, 260);
 
 export default function LoginScreen({ navigation }) {
   const [email, setEmail] = useState('');
@@ -180,7 +182,7 @@ export default function LoginScreen({ navigation }) {
 
 const styles = StyleSheet.create({
   hero: {
-    height: height * 0.32,
+    height: HERO_HEIGHT,
     justifyContent: 'flex-end',
     paddingBottom: SIZES.xl,
   },
