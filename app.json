@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "CuoiKy",
+    "name": "ExploreEase",
     "slug": "CuoiKy",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -10,20 +10,60 @@
     "splash": {
       "image": "./assets/splash-icon.png",
       "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
+      "backgroundColor": "#4A90D9"
     },
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "config": {
+        "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+      },
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "ExploreEase needs your location to find nearby places."
+      }
     },
     "android": {
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#ffffff"
+        "backgroundColor": "#4A90D9"
       },
-      "edgeToEdgeEnabled": true
+      "edgeToEdgeEnabled": true,
+      "config": {
+        "googleMaps": {
+          "apiKey": "YOUR_GOOGLE_MAPS_API_KEY"
+        }
+      },
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "CAMERA",
+        "READ_EXTERNAL_STORAGE"
+      ]
     },
     "web": {
-      "favicon": "./assets/favicon.png"
-    }
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      "expo-secure-store",
+      "expo-web-browser",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "ExploreEase needs your location to find nearby places and attractions."
+        }
+      ],
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "ExploreEase needs camera access to scan QR codes and take photos."
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "ExploreEase needs photo access to upload review and profile images."
+        }
+      ]
+    ]
   }
 }

@@ -30,8 +30,19 @@ yarn-error.*
 .DS_Store
 *.pem
 
-# local env files
+# local env files - NEVER commit real API keys
+.env
+.env.local
 .env*.local
+.env.production
+.env.development
+
+# Random files in root that aren't part of the project
+*.jpg
+*.jpeg
+*.png
+!assets/*.png
+!assets/**/*.png
 
 # typescript
 *.tsbuildinfo
