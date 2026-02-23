@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { LinearGradient } from 'expo-linear-gradient';
 import * as Google from 'expo-auth-session/providers/google';
 import * as WebBrowser from 'expo-web-browser';
-import { loginWithEmail, loginWithGoogleCredential } from '../../services/authService';
+import { loginWithEmail, loginWithGoogleCredential, loginWithGooglePopup } from '../../services/authService';
 import { validateEmail } from '../../utils/validators';
 import { COLORS, SIZES } from '../../config/constants';
 
@@ -32,6 +32,7 @@ export default function LoginScreen({ navigation }) {
     androidClientId: process.env.EXPO_PUBLIC_GOOGLE_OAUTH_CLIENT_ID,
   });
 
+
   useEffect(() => {
     if (response?.type === 'success') {
       const { id_token } = response.params;
@@ -48,7 +49,26 @@ export default function LoginScreen({ navigation }) {
     try {
       await loginWithGoogleCredential(idToken);
     } catch (e) {
+      console.log('[Google native error]', e.code, e.message);
       setError('Google sign-in failed. Please try again.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  // Web: dùng Firebase Popup thay vì expo-auth-session
+  const handleGoogleSignInWeb = async () => {
+    setGoogleLoading(true);
+    setError('');
+    try {
+      await loginWithGooglePopup();
+    } catch (e) {
+      console.log('[Google web error]', e.code, e.message);
+      if (e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') {
+        // user tự đóng popup, không cần báo lỗi
+      } else {
+        setError(`Lỗi: ${e.code || e.message}`);
+      }
     } finally {
       setGoogleLoading(false);
     }
@@ -159,8 +179,8 @@ export default function LoginScreen({ navigation }) {
 
             <TouchableOpacity
               style={styles.googleBtn}
-              onPress={() => { setGoogleLoading(true); promptAsync(); }}
-              disabled={!request || googleLoading}
+              onPress={Platform.OS === 'web' ? handleGoogleSignInWeb : () => { setGoogleLoading(true); promptAsync(); }}
+              disabled={Platform.OS !== 'web' && (!request || googleLoading)}
               activeOpacity={0.85}
             >
               <Text style={styles.googleIcon}>G</Text>

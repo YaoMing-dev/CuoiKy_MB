@@ -5,6 +5,7 @@ import {
   sendPasswordResetEmail,
   GoogleAuthProvider,
   signInWithCredential,
+  signInWithPopup,
   deleteUser,
   updateProfile,
 } from 'firebase/auth';
@@ -40,6 +41,33 @@ export const loginWithEmail = async (email, password) => {
   return userCredential.user;
 };
 
+// Web: dùng Firebase signInWithPopup (không cần redirect URI setup)
+export const loginWithGooglePopup = async () => {
+  const provider = new GoogleAuthProvider();
+  const userCredential = await signInWithPopup(auth, provider);
+  const user = userCredential.user;
+
+  const userDoc = await getDoc(doc(db, 'users', user.uid));
+  if (!userDoc.exists()) {
+    await setDoc(doc(db, 'users', user.uid), {
+      email: user.email,
+      displayName: user.displayName || '',
+      photoURL: user.photoURL || null,
+      bio: '',
+      interests: [],
+      travelStyle: 'solo',
+      role: 'user',
+      expoPushToken: null,
+      followersCount: 0,
+      followingCount: 0,
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+  }
+  return user;
+};
+
+// Native (Expo Go): dùng expo-auth-session id_token
 export const loginWithGoogleCredential = async (idToken) => {
   const credential = GoogleAuthProvider.credential(idToken);
   const userCredential = await signInWithCredential(auth, credential);

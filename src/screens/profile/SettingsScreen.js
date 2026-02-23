@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, ScrollView, Alert } from 'react-native';
-import { Text, List, Divider, Button, Switch } from 'react-native-paper';
+import { View, StyleSheet, ScrollView } from 'react-native';
+import { Text, List, Divider, Button, Switch, Dialog, Portal } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import useAuthStore from '../../stores/useAuthStore';
 import { logoutUser, deleteUserAccount } from '../../services/authService';
@@ -10,68 +10,64 @@ export default function SettingsScreen() {
   const { user, userProfile, logout } = useAuthStore();
   const [notifications, setNotifications] = useState(true);
   const [loggingOut, setLoggingOut] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const [showLogoutDialog, setShowLogoutDialog] = useState(false);
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false);
 
   const handleLogout = async () => {
-    Alert.alert('Log Out', 'Are you sure you want to log out?', [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Log Out',
-        style: 'destructive',
-        onPress: async () => {
-          setLoggingOut(true);
-          try {
-            await logoutUser();
-            logout();
-          } catch (e) {
-            Alert.alert('Error', 'Failed to log out.');
-          } finally {
-            setLoggingOut(false);
-          }
-        },
-      },
-    ]);
+    setShowLogoutDialog(false);
+    setLoggingOut(true);
+    try {
+      await logoutUser();
+      logout();
+    } catch (e) {
+      setLoggingOut(false);
+    }
   };
 
-  const handleDeleteAccount = () => {
-    Alert.alert(
-      'Delete Account',
-      'This will permanently delete your account and all your data. This action cannot be undone.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await deleteUserAccount(user.uid);
-              logout();
-            } catch (e) {
-              if (e.code === 'auth/requires-recent-login') {
-                Alert.alert(
-                  'Re-login Required',
-                  'For security, please log out and log back in before deleting your account.',
-                  [{ text: 'OK' }]
-                );
-              } else {
-                Alert.alert('Error', 'Failed to delete account. Please try again.');
-              }
-            }
-          },
-        },
-      ]
-    );
-  };
-
-  const handleDownloadData = () => {
-    Alert.alert(
-      'Download My Data',
-      `Your data will be compiled and sent to:\n${user?.email}\n\nThis may take a few minutes.`,
-      [{ text: 'OK' }]
-    );
+  const handleDeleteAccount = async () => {
+    setShowDeleteDialog(false);
+    setDeleting(true);
+    try {
+      await deleteUserAccount(user.uid);
+      logout();
+    } catch (e) {
+      setDeleting(false);
+      if (e.code === 'auth/requires-recent-login') {
+        setShowReauthDialog(true);
+      }
+    }
   };
 
   return (
     <SafeAreaView style={styles.safe}>
+      <Portal>
+        {/* Logout Confirm Dialog */}
+        <Dialog visible={showLogoutDialog} onDismiss={() => setShowLogoutDialog(false)}>
+          <Dialog.Title>Log Out</Dialog.Title>
+          <Dialog.Content>
+            <Text>Are you sure you want to log out?</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowLogoutDialog(false)}>Cancel</Button>
+            <Button textColor={COLORS.error} onPress={handleLogout}>Log Out</Button>
+          </Dialog.Actions>
+        </Dialog>
+
+        {/* Delete Confirm Dialog */}
+        <Dialog visible={showDeleteDialog} onDismiss={() => setShowDeleteDialog(false)}>
+          <Dialog.Title>Delete Account</Dialog.Title>
+          <Dialog.Content>
+            <Text>This will permanently delete your account and all your data. This cannot be undone.</Text>
+          </Dialog.Content>
+          <Dialog.Actions>
+            <Button onPress={() => setShowDeleteDialog(false)}>Cancel</Button>
+            <Button textColor={COLORS.error} onPress={handleDeleteAccount}>Delete</Button>
+          </Dialog.Actions>
+        </Dialog>
+      </Portal>
+
       <ScrollView>
         {/* Account */}
         <List.Section>
@@ -106,17 +102,9 @@ export default function SettingsScreen() {
 
         <Divider />
 
-        {/* Privacy (GDPR) */}
+        {/* Privacy */}
         <List.Section>
           <List.Subheader style={styles.subheader}>Privacy & Data</List.Subheader>
-          <List.Item
-            title="Download My Data"
-            description="Get a copy of your personal data"
-            left={(props) => <List.Icon {...props} icon="download" color={COLORS.primary} />}
-            onPress={handleDownloadData}
-            right={(props) => <List.Icon {...props} icon="chevron-right" />}
-          />
-          <Divider />
           <List.Item
             title="Privacy Policy"
             left={(props) => <List.Icon {...props} icon="shield-lock" color={COLORS.primary} />}
@@ -126,7 +114,7 @@ export default function SettingsScreen() {
 
         <Divider />
 
-        {/* App Info */}
+        {/* About */}
         <List.Section>
           <List.Subheader style={styles.subheader}>About</List.Subheader>
           <List.Item
@@ -142,7 +130,7 @@ export default function SettingsScreen() {
         <View style={styles.dangerZone}>
           <Button
             mode="outlined"
-            onPress={handleLogout}
+            onPress={() => setShowLogoutDialog(true)}
             loading={loggingOut}
             icon="logout"
             textColor={COLORS.error}
@@ -154,10 +142,10 @@ export default function SettingsScreen() {
 
           <Button
             mode="text"
-            onPress={handleDeleteAccount}
+            onPress={() => setShowDeleteDialog(true)}
+            loading={deleting}
             icon="delete-forever"
             textColor={COLORS.error}
-            style={styles.deleteButton}
           >
             Delete Account
           </Button>
@@ -172,6 +160,5 @@ const styles = StyleSheet.create({
   subheader: { color: COLORS.primary, fontWeight: 'bold' },
   dangerZone: { padding: SIZES.lg, gap: SIZES.sm, marginBottom: SIZES.xl },
   logoutButton: { borderColor: COLORS.error },
-  deleteButton: {},
   buttonContent: { height: 48 },
 });
