@@ -1,6 +1,7 @@
 import {
   collection, query, where, orderBy, limit, startAfter,
   getDocs, getDoc, doc, writeBatch, serverTimestamp, GeoPoint,
+  runTransaction,
 } from 'firebase/firestore';
 import { db } from '../config/firebase';
 import { SEED_PLACES } from '../data/seedPlaces';
@@ -113,6 +114,27 @@ export const getNearbyPlaces = async (latitude, longitude, radiusKm = 15) => {
 };
 
 // ─── Reviews ─────────────────────────────────────────────────────────────────
+
+// Submit review + atomically update place averageRating & reviewCount
+export const submitReview = async (reviewData) => {
+  const placeRef = doc(db, 'places', reviewData.placeId);
+  const reviewRef = doc(collection(db, 'reviews'));
+
+  await runTransaction(db, async (transaction) => {
+    const placeSnap = await transaction.get(placeRef);
+    if (!placeSnap.exists()) throw new Error('Place not found');
+
+    const { reviewCount = 0, averageRating = 0 } = placeSnap.data();
+    const newCount = reviewCount + 1;
+    const newAvg = Math.round(((averageRating * reviewCount) + reviewData.rating) / newCount * 10) / 10;
+
+    transaction.set(reviewRef, { ...reviewData, createdAt: serverTimestamp() });
+    transaction.update(placeRef, { reviewCount: newCount, averageRating: newAvg });
+  });
+
+  return reviewRef.id;
+};
+
 export const createReview = async (reviewData) => {
   const ref = doc(collection(db, 'reviews'));
   await writeBatch(db).set(ref, { ...reviewData, createdAt: serverTimestamp() }).commit();

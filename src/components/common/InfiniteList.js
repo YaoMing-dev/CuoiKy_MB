@@ -66,6 +66,7 @@ export default function InfiniteList({
           tintColor={COLORS.primary}
         />
       }
+      style={{ flex: 1 }}
       contentContainerStyle={[{ paddingBottom: SIZES.xl }, contentContainerStyle]}
       {...rest}
     />

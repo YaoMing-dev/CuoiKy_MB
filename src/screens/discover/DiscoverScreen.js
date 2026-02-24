@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, ScrollView, TouchableOpacity, FlatList } from 'react-native';
-import { Text, Searchbar, ActivityIndicator, Chip } from 'react-native-paper';
+import { Text, Searchbar, ActivityIndicator } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useInfiniteQuery } from '@tanstack/react-query';
 import { getPlaces, calculateDistance } from '../../services/firestoreService';
@@ -19,7 +19,7 @@ export default function DiscoverScreen({ navigation }) {
 
   const {
     data, fetchNextPage, hasNextPage, isFetchingNextPage,
-    isLoading, isError, refetch, isRefetching,
+    isLoading, isError, error, refetch, isRefetching,
   } = useInfiniteQuery({
     queryKey: ['places', selectedCat],
     queryFn: ({ pageParam }) => getPlaces(selectedCat === 'all' ? null : selectedCat, pageParam),
@@ -46,11 +46,15 @@ export default function DiscoverScreen({ navigation }) {
   );
 
   if (isError) {
+    console.error('[DiscoverScreen] Firestore error:', error);
     return (
       <SafeAreaView style={styles.safe} edges={['top']}>
         <View style={styles.center}>
           <Text style={{ fontSize: 40, marginBottom: 12 }}>⚠️</Text>
           <Text style={styles.errorText}>Failed to load places.</Text>
+          <Text style={{ color: COLORS.textSecondary, fontSize: 12, textAlign: 'center', marginBottom: 12, paddingHorizontal: 16 }}>
+            {error?.message || 'Check Firestore rules or console logs.'}
+          </Text>
           <TouchableOpacity onPress={refetch} style={styles.retryBtn}>
             <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Retry</Text>
           </TouchableOpacity>
@@ -85,21 +89,24 @@ export default function DiscoverScreen({ navigation }) {
       <ScrollView
         horizontal
         showsHorizontalScrollIndicator={false}
-        style={styles.chipScroll}
         contentContainerStyle={styles.chipRow}
+        style={styles.chipScroll}
       >
-        {ALL_CATS.map((cat) => (
-          <Chip
-            key={cat.id}
-            selected={selectedCat === cat.id}
-            onPress={() => setSelectedCat(cat.id)}
-            style={[styles.chip, selectedCat === cat.id && styles.chipActive]}
-            textStyle={[styles.chipText, selectedCat === cat.id && styles.chipTextActive]}
-            showSelectedCheck={false}
-          >
-            {cat.label}
-          </Chip>
-        ))}
+        {ALL_CATS.map((cat) => {
+          const active = selectedCat === cat.id;
+          return (
+            <TouchableOpacity
+              key={cat.id}
+              onPress={() => setSelectedCat(cat.id)}
+              style={[styles.chip, active && styles.chipActive]}
+              activeOpacity={0.75}
+            >
+              <Text style={[styles.chipText, active && styles.chipTextActive]} numberOfLines={1}>
+                {cat.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
       </ScrollView>
 
       {/* Results count */}
@@ -148,12 +155,36 @@ const styles = StyleSheet.create({
   mapBtnText: { color: COLORS.primary, fontWeight: '600', fontSize: 13 },
   searchBarWrap: { marginHorizontal: SIZES.md, marginBottom: SIZES.sm },
   searchBar: { borderRadius: 12, elevation: 0, backgroundColor: '#fff', height: 44 },
-  chipScroll: { maxHeight: 48 },
-  chipRow: { paddingHorizontal: SIZES.md, gap: SIZES.sm, alignItems: 'center' },
-  chip: { backgroundColor: '#fff', borderWidth: 1, borderColor: COLORS.border },
-  chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  chipText: { color: COLORS.textSecondary, fontSize: 12 },
-  chipTextActive: { color: '#fff' },
+  chipScroll: {
+    flexShrink: 0,
+    flexGrow: 0,
+    height: 50,
+  },
+  chipRow: {
+    flexDirection: 'row',
+    paddingHorizontal: SIZES.md,
+    alignItems: 'center',
+  },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#E8EAED',
+    marginRight: SIZES.sm,
+    flexShrink: 0,
+  },
+  chipActive: {
+    backgroundColor: COLORS.primary,
+  },
+  chipText: {
+    color: '#444',
+    fontSize: 13,
+    fontWeight: '500',
+  },
+  chipTextActive: {
+    color: '#fff',
+    fontWeight: '700',
+  },
   resultsCount: {
     paddingHorizontal: SIZES.md,
     paddingVertical: 6,

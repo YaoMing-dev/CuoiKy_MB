@@ -132,7 +132,10 @@ export default function PlaceDetailScreen({ route, navigation }) {
           <View style={styles.btnRow}>
             <TouchableOpacity
               style={styles.btnSecondary}
-              onPress={() => navigation.navigate('ReviewList', { placeId: place.id, placeName: place.name })}
+              onPress={() => navigation.navigate('ReviewList', {
+                placeId: place.id, placeName: place.name,
+                averageRating: place.averageRating, reviewCount: place.reviewCount,
+              })}
             >
               <Text style={styles.btnSecondaryText}>⭐  All Reviews</Text>
             </TouchableOpacity>
