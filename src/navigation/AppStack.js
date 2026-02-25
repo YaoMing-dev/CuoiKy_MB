@@ -52,10 +52,24 @@ import ManageReviewsScreen from '../screens/admin/ManageReviewsScreen';
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
-function HomeStack() {
+function HomeStack({ navigation }) {
   return (
     <Stack.Navigator>
-      <Stack.Screen name="HomeMain" component={HomeScreen} options={{ title: 'ExploreEase' }} />
+      <Stack.Screen 
+        name="HomeMain" 
+        component={HomeScreen} 
+        options={{ 
+          title: 'ExploreEase',
+          headerRight: () => (
+            <IconButton 
+              icon="bell" 
+              iconColor={COLORS.primary}
+              size={24}
+              onPress={() => navigation.navigate('Notifications')}
+            />
+          ),
+        }} 
+      />
       <Stack.Screen name="Search" component={SearchScreen} options={{ title: 'Search' }} />
       <Stack.Screen name="PlaceDetail" component={PlaceDetailScreen} options={{ title: 'Place Details' }} />
       <Stack.Screen name="ReviewList" component={ReviewListScreen} options={{ title: 'Reviews' }} />
@@ -67,10 +81,24 @@ function HomeStack() {
   );
 }
 
-function DiscoverStack() {
+function DiscoverStack({ navigation }) {
   return (
     <Stack.Navigator>
-      <Stack.Screen name="DiscoverMain" component={DiscoverScreen} options={{ title: 'Discover' }} />
+      <Stack.Screen 
+        name="DiscoverMain" 
+        component={DiscoverScreen} 
+        options={{ 
+          title: 'Discover',
+          headerRight: () => (
+            <IconButton 
+              icon="bell" 
+              iconColor={COLORS.primary}
+              size={24}
+              onPress={() => navigation.navigate('Home', { screen: 'Notifications' })}
+            />
+          ),
+        }} 
+      />
       <Stack.Screen name="PlaceDetail" component={PlaceDetailScreen} options={{ title: 'Place Details' }} />
       <Stack.Screen name="MapExplore" component={MapExploreScreen} options={{ title: 'Map' }} />
       <Stack.Screen name="ReviewList" component={ReviewListScreen} options={{ title: 'Reviews' }} />
@@ -79,29 +107,71 @@ function DiscoverStack() {
   );
 }
 
-function EventStack() {
+function EventStack({ navigation }) {
   return (
     <Stack.Navigator>
-      <Stack.Screen name="EventList" component={EventListScreen} options={{ title: 'Events' }} />
+      <Stack.Screen 
+        name="EventList" 
+        component={EventListScreen} 
+        options={{ 
+          title: 'Events',
+          headerRight: () => (
+            <IconButton 
+              icon="bell" 
+              iconColor={COLORS.primary}
+              size={24}
+              onPress={() => navigation.navigate('Home', { screen: 'Notifications' })}
+            />
+          ),
+        }} 
+      />
       <Stack.Screen name="EventDetail" component={EventDetailScreen} options={{ title: 'Event Details' }} />
       <Stack.Screen name="CreateEvent" component={CreateEventScreen} options={{ title: 'Create Event' }} />
     </Stack.Navigator>
   );
 }
 
-function PlannerStack() {
+function PlannerStack({ navigation }) {
   return (
     <Stack.Navigator>
-      <Stack.Screen name="ItineraryList" component={ItineraryListScreen} options={{ title: 'My Plans' }} />
+      <Stack.Screen 
+        name="ItineraryList" 
+        component={ItineraryListScreen} 
+        options={{ 
+          title: 'My Plans',
+          headerRight: () => (
+            <IconButton 
+              icon="bell" 
+              iconColor={COLORS.primary}
+              size={24}
+              onPress={() => navigation.navigate('Home', { screen: 'Notifications' })}
+            />
+          ),
+        }} 
+      />
       <Stack.Screen name="ItineraryDetail" component={ItineraryDetailScreen} options={{ title: 'Itinerary' }} />
     </Stack.Navigator>
   );
 }
 
-function ProfileStack() {
+function ProfileStack({ navigation }) {
   return (
     <Stack.Navigator>
-      <Stack.Screen name="MyProfile" component={MyProfileScreen} options={{ title: 'My Profile' }} />
+      <Stack.Screen 
+        name="MyProfile" 
+        component={MyProfileScreen} 
+        options={{ 
+          title: 'My Profile',
+          headerRight: () => (
+            <IconButton 
+              icon="bell" 
+              iconColor={COLORS.primary}
+              size={24}
+              onPress={() => navigation.navigate('Home', { screen: 'Notifications' })}
+            />
+          ),
+        }} 
+      />
       <Stack.Screen name="Preferences" component={PreferencesScreen} options={{ title: 'Preferences' }} />
       <Stack.Screen name="Settings" component={SettingsScreen} options={{ title: 'Settings' }} />
       <Stack.Screen name="ChatList" component={ChatListScreen} options={{ title: 'Messages' }} />
