@@ -1,97 +1,104 @@
-import React from 'react';
-import { View, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
-import { Text, Divider, Portal, Modal, Badge } from 'react-native-paper';
-import { useQuery } from '@tanstack/react-query';
-import { collection, query, where, orderBy, limit, getDocs } from 'firebase/firestore';
-import { db } from '../config/firebase';
-import useAuthStore from '../stores/useAuthStore';
+import React, { useEffect, useState } from 'react';
+import {
+  View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal,
+} from 'react-native';
+import { Divider, Badge } from 'react-native-paper';
+import { Ionicons } from '@expo/vector-icons';
+import { collection, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { db, auth } from '../config/firebase';
 import { COLORS, SIZES } from '../config/constants';
 
-const NOTIFICATION_ICONS = {
-  follow: '👥',
-  review: '⭐',
-  event_reminder: '📅',
-  message: '💬',
-  admin: '⚙️',
-};
-
 export default function NotificationDropdown({ visible, onDismiss, onSeeAll }) {
-  const { user } = useAuthStore();
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const { data: notifications = [] } = useQuery({
-    queryKey: ['notifications-dropdown', user?.uid],
-    queryFn: async () => {
-      if (!user) return [];
-      const q = query(
-        collection(db, 'notifications'),
-        where('userId', '==', user.uid),
-        orderBy('createdAt', 'desc'),
-        limit(5)
-      );
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }));
-    },
-    enabled: !!user && visible,
-    staleTime: 30 * 1000,
-  });
+  useEffect(() => {
+    if (!auth.currentUser || !visible) return;
+
+    const q = query(
+      collection(db, 'notifications'),
+      where('userId', '==', auth.currentUser.uid),
+      orderBy('createdAt', 'desc'),
+      limit(5)
+    );
+
+    const unsubscribe = onSnapshot(q, (snap) => {
+      const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+      setNotifications(items);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, [visible]);
+
+  const getIcon = (type) => {
+    switch (type) {
+      case 'follow': return 'person-add';
+      case 'review': return 'star';
+      case 'event_reminder': return 'calendar';
+      case 'message': return 'chatbubble';
+      default: return 'notifications';
+    }
+  };
 
   const unreadCount = notifications.filter((n) => !n.read).length;
 
-  const timeAgo = (timestamp) => {
-    if (!timestamp) return '';
-    const date = timestamp?.toDate ? timestamp.toDate() : new Date(timestamp);
-    const seconds = Math.floor((new Date() - date) / 1000);
-    if (seconds < 60) return 'now';
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h`;
-    return `${Math.floor(seconds / 86400)}d`;
-  };
-
   return (
-    <Portal>
-      <Modal
-        visible={visible}
-        onDismiss={onDismiss}
-        contentContainerStyle={s.modal}
+    <Modal
+      visible={visible}
+      transparent
+      animationType="fade"
+      onRequestClose={onDismiss}
+    >
+      <TouchableOpacity
+        style={s.overlay}
+        activeOpacity={1}
+        onPress={onDismiss}
       >
-        <View style={s.dropdown}>
+        <View style={s.dropdown} onStartShouldSetResponder={() => true}>
           {/* Header */}
           <View style={s.header}>
             <Text style={s.headerTitle}>Notifications</Text>
-            {unreadCount > 0 && (
-              <Badge size={20} style={s.badge}>{unreadCount}</Badge>
-            )}
+            {unreadCount > 0 && <Badge size={20} style={s.badge}>{unreadCount}</Badge>}
           </View>
           <Divider />
 
-          {/* Notification List */}
-          {notifications.length === 0 ? (
+          {/* Empty state */}
+          {!loading && notifications.length === 0 && (
             <View style={s.empty}>
-              <Text style={{ fontSize: 32 }}>🔔</Text>
+              <Text style={{ fontSize: 40 }}>🔔</Text>
               <Text style={s.emptyText}>No notifications</Text>
             </View>
-          ) : (
+          )}
+
+          {/* Notification list */}
+          {notifications.length > 0 && (
             <ScrollView style={s.list} showsVerticalScrollIndicator={false}>
               {notifications.map((item) => {
-                const icon = NOTIFICATION_ICONS[item.type] || '🔔';
+                const timeAgo = item.createdAt
+                  ? Math.floor((Date.now() - item.createdAt.toMillis()) / 60000)
+                  : 0;
+                const timeLabel =
+                  timeAgo < 1 ? 'just now' :
+                  timeAgo < 60 ? `${timeAgo}m` :
+                  timeAgo < 1440 ? `${Math.floor(timeAgo / 60)}h` :
+                  `${Math.floor(timeAgo / 1440)}d`;
+
                 return (
                   <TouchableOpacity
                     key={item.id}
                     style={[s.item, !item.read && s.itemUnread]}
-                    onPress={onDismiss}
-                    activeOpacity={0.7}
+                    onPress={() => {
+                      // TODO: Mark as read & navigate
+                      onDismiss();
+                    }}
                   >
                     <View style={s.itemIcon}>
-                      <Text style={{ fontSize: 18 }}>{icon}</Text>
+                      <Ionicons name={getIcon(item.type)} size={18} color={COLORS.primary} />
                     </View>
                     <View style={s.itemContent}>
-                      <Text style={s.itemTitle} numberOfLines={1}>
-                        {item.title}
-                      </Text>
-                      <Text style={s.itemBody} numberOfLines={2}>
-                        {item.body}
-                      </Text>
-                      <Text style={s.itemTime}>{timeAgo(item.createdAt)}</Text>
+                      <Text style={s.itemTitle}>{item.message}</Text>
+                      <Text style={s.itemTime}>{timeLabel}</Text>
                     </View>
                     {!item.read && <View style={s.unreadDot} />}
                   </TouchableOpacity>
@@ -110,25 +117,28 @@ export default function NotificationDropdown({ visible, onDismiss, onSeeAll }) {
             </>
           )}
         </View>
-      </Modal>
-    </Portal>
+      </TouchableOpacity>
+    </Modal>
   );
 }
 
 const s = StyleSheet.create({
-  modal: {
-    alignItems: 'flex-end',
-    paddingTop: 60,
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.4)',
+    paddingTop: 60, // Space below header
     paddingRight: 10,
+    alignItems: 'flex-end',
   },
   dropdown: {
     width: 360,
+    maxWidth: '90%',
     maxHeight: 450,
     backgroundColor: '#fff',
     borderRadius: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
+    shadowOpacity: 0.3,
     shadowRadius: 12,
     elevation: 8,
   },
@@ -186,11 +196,6 @@ const s = StyleSheet.create({
     color: COLORS.text,
     marginBottom: 2,
   },
-  itemBody: {
-    fontSize: 12,
-    color: COLORS.textSecondary,
-    marginBottom: 4,
-  },
   itemTime: {
     fontSize: 11,
     color: COLORS.textSecondary,
@@ -203,11 +208,11 @@ const s = StyleSheet.create({
     marginTop: 4,
   },
   footer: {
-    padding: SIZES.sm,
+    padding: SIZES.md,
     alignItems: 'center',
   },
   footerText: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: '600',
     color: COLORS.primary,
   },
