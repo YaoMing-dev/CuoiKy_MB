@@ -66,56 +66,57 @@ export const seedFeedData = async (currentUserId) => {
       throw new Error('Please seed Places and Events first!');
     }
 
-    // Find specific places/events or use first available
-    const benThanh = places.find(p => p.name?.includes('Ben Thanh')) || places[0];
-    const hoiAn = places.find(p => p.name?.includes('Hoi An')) || places[1] || places[0];
-    const haLong = places.find(p => p.name?.includes('Ha Long')) || places[2] || places[0];
-    const daLat = places.find(p => p.city?.includes('Da Lat')) || places[3] || places[0];
-    
-    const foodEvent = events.find(e => e.category === 'food') || events[0];
-    const sportsEvent = events.find(e => e.category === 'sports') || events[1] || events[0];
+    // Use first available items - simpler approach
+    const place1 = places[0];
+    const place2 = places[1] || places[0];
+    const event1 = events[0];
+    const event2 = events[1] || events[0];
 
-    console.log('[FEED] Using places:', benThanh?.name, hoiAn?.name);
-    console.log('[FEED] Using events:', foodEvent?.title, sportsEvent?.title);
+    console.log('[FEED] Using:', {
+      place1: place1.name,
+      place2: place2.name,
+      event1: event1.title,
+      event2: event2.title
+    });
 
     const sampleActivities = [
-      // Review post with rating and text
+      // Simple review - minimal data
       {
         userId: 'user_anna',
         userName: 'Anna Nguyen',
         action: 'reviewed',
         targetType: 'place',
-        targetId: benThanh?.id || 'place_1',
-        targetName: benThanh?.name || 'Ben Thanh Market',
+        targetId: place1.id,
+        targetName: place1.name,
         rating: 5,
-        reviewText: 'Amazing local experience! The vendors are so friendly and the food is absolutely delicious. Must-visit when in Saigon! 🇻🇳',
-        imageUrl: benThanh?.imageUrl || 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800',
+        reviewText: 'Amazing place! Highly recommend visiting! 🌟',
+        imageUrl: place1.imageUrl || place1.coverImage || 'https://via.placeholder.com/400',
       },
-      // Event post with details
+      // Simple event
       {
         userId: 'user_john',
         userName: 'John Smith',
         action: 'created_event',
         targetType: 'event',
-        targetId: foodEvent?.id || 'event_1',
-        targetName: foodEvent?.title || 'Saigon Street Food Festival',
-        eventCover: foodEvent?.imageUrl || 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800',
-        eventDate: foodEvent?.date || 'Th 7, 28/02/2026',
-        eventLocation: foodEvent?.city || 'Ho Chi Minh City',
+        targetId: event1.id,
+        targetName: event1.title,
+        eventCover: event1.coverImage || event1.imageUrl || 'https://via.placeholder.com/400',
+        eventDate: event1.date ? new Date(event1.date.seconds * 1000).toLocaleDateString() : 'TBA',
+        eventLocation: event1.city,
       },
-      // Review with high rating
+      // Another review
       {
         userId: 'user_linh',
         userName: 'Linh Tran',
         action: 'reviewed',
         targetType: 'place',
-        targetId: hoiAn?.id || 'place_2',
-        targetName: hoiAn?.name || 'Hoi An Ancient Town',
-        rating: 5,
-        reviewText: 'Magical lanterns at night! 🏮 The architecture is stunning and the atmosphere is so peaceful. Perfect for photography lovers!',
-        imageUrl: hoiAn?.imageUrl || 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800',
+        targetId: place2.id,
+        targetName: place2.name,
+        rating: 4,
+        reviewText: 'Great experience! Will come back again.',
+        imageUrl: place2.imageUrl || place2.coverImage || 'https://via.placeholder.com/400',
       },
-      // Simple follow activity
+      // Simple follow
       {
         userId: 'user_mike',
         userName: 'Mike Chen',
@@ -124,42 +125,24 @@ export const seedFeedData = async (currentUserId) => {
         targetId: currentUserId,
         targetName: 'You',
       },
-      // Event post
+      // Another event
       {
         userId: 'user_anna',
         userName: 'Anna Nguyen',
         action: 'created_event',
         targetType: 'event',
-        targetId: sportsEvent?.id || 'event_2',
-        targetName: sportsEvent?.title || 'Beach Volleyball Tournament',
-        eventCover: sportsEvent?.imageUrl || 'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=800',
-        eventDate: sportsEvent?.date || 'Sat 1, 01/03/2026',
-        eventLocation: sportsEvent?.city || 'Nha Trang Beach',
-      },
-      // Review with photo
-      {
-        userId: 'user_david',
-        userName: 'David Le',
-        action: 'reviewed',
-        targetType: 'place',
-        targetId: haLong?.id || 'place_3',
-        targetName: haLong?.name || 'Ha Long Bay',
-        rating: 5,
-        reviewText: 'Breathtaking scenery! The cruise was incredible and the limestone karsts are even more beautiful in person. Worth every penny! ⛵️',
-        imageUrl: haLong?.imageUrl || 'https://images.unsplash.com/photo-1528127269322-539801943592?w=800',
-      },
-      // Simple visit
-      {
-        userId: 'user_emily',
-        userName: 'Emily Pham',
-        action: 'visited',
-        targetType: 'place',
-        targetId: daLat?.id || 'place_4',
-        targetName: daLat?.name || 'Da Lat City',
+        targetId: event2.id,
+        targetName: event2.title,
+        eventCover: event2.coverImage || event2.imageUrl || 'https://via.placeholder.com/400',
+        eventDate: event2.date ? new Date(event2.date.seconds * 1000).toLocaleDateString() : 'TBA',
+        eventLocation: event2.city,
       },
     ];
 
+    console.log('[FEED] Creating activities:', sampleActivities.length);
+
     for (const activity of sampleActivities) {
+      console.log('[FEED] Adding:', activity.action, activity.targetName);
       await addDoc(collection(db, 'feed'), {
         ...activity,
         timestamp: serverTimestamp(),

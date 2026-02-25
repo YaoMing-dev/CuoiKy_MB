@@ -19,109 +19,122 @@ function FeedPost({ item, onPress }) {
       if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
       return `${Math.floor(seconds / 86400)}d ago`;
     } catch (e) {
+      console.error('[FEED] timeAgo error:', e);
       return 'recently';
     }
   };
 
-  if (!item || !item.action) return null;
+  if (!item || !item.action) {
+    console.warn('[FEED] Invalid item:', item);
+    return null;
+  }
 
-  // Review post
-  if (item.action === 'reviewed') {
-    return (
-      <Card style={s.card} onPress={onPress}>
-        <Card.Title
-          title={item.userName || 'User'}
-          subtitle={`reviewed ${item.targetName || 'a place'} • ${timeAgo(item.timestamp)}`}
-          left={(props) => <Avatar.Text {...props} size={40} label={(item.userName?.[0] || 'U').toUpperCase()} />}
-        />
-        {item.rating > 0 && (
-          <View style={s.rating}>
-            {[1, 2, 3, 4, 5].map((star) => (
-              <Ionicons
-                key={star}
-                name={star <= item.rating ? 'star' : 'star-outline'}
-                size={16}
-                color="#FFB800"
-              />
-            ))}
-          </View>
-        )}
-        {item.reviewText && (
+  try {
+    // Review post
+    if (item.action === 'reviewed') {
+      return (
+        <Card style={s.card} onPress={onPress}>
+          <Card.Title
+            title={item.userName || 'User'}
+            subtitle={`reviewed ${item.targetName || 'a place'} • ${timeAgo(item.timestamp)}`}
+            left={(props) => <Avatar.Text {...props} size={40} label={(item.userName?.[0] || 'U').toUpperCase()} />}
+          />
+          {item.rating > 0 && (
+            <View style={s.rating}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Ionicons
+                  key={star}
+                  name={star <= item.rating ? 'star' : 'star-outline'}
+                  size={16}
+                  color="#FFB800"
+                />
+              ))}
+            </View>
+          )}
+          {item.reviewText && (
+            <Card.Content style={{ marginTop: 8 }}>
+              <Text>{item.reviewText}</Text>
+            </Card.Content>
+          )}
+          {item.imageUrl && (
+            <Card.Cover source={{ uri: item.imageUrl }} style={{ marginTop: 8 }} />
+          )}
+          <Card.Actions>
+            <Button icon="heart-outline" compact>Like</Button>
+            <Button icon="comment-outline" compact>Comment</Button>
+            <Button icon="share-outline" compact>Share</Button>
+          </Card.Actions>
+        </Card>
+      );
+    }
+
+    // Event post
+    if (item.action === 'created_event') {
+      return (
+        <Card style={s.card} onPress={onPress}>
+          <Card.Title
+            title={item.userName || 'User'}
+            subtitle={`created an event • ${timeAgo(item.timestamp)}`}
+            left={(props) => <Avatar.Text {...props} size={40} label={(item.userName?.[0] || 'U').toUpperCase()} />}
+          />
+          {item.eventCover && (
+            <Card.Cover source={{ uri: item.eventCover }} style={{ marginTop: 0 }} />
+          )}
           <Card.Content style={{ marginTop: 8 }}>
-            <Text>{item.reviewText}</Text>
+            <Text style={{ fontWeight: '700', fontSize: 16 }}>{item.targetName}</Text>
+            {item.eventDate && (
+              <View style={s.eventMeta}>
+                <Ionicons name="calendar-outline" size={14} color="#666" />
+                <Text style={{ marginLeft: 4, fontSize: 12, color: '#666' }}>
+                  {item.eventDate}
+                </Text>
+              </View>
+            )}
+            {item.eventLocation && (
+              <View style={s.eventMeta}>
+                <Ionicons name="location-outline" size={14} color="#666" />
+                <Text style={{ marginLeft: 4, fontSize: 12, color: '#666' }}>
+                  {item.eventLocation}
+                </Text>
+              </View>
+            )}
           </Card.Content>
-        )}
-        {item.imageUrl && (
-          <Card.Cover source={{ uri: item.imageUrl }} style={{ marginTop: 8 }} />
-        )}
-        <Card.Actions>
-          <Button icon="heart-outline" compact>Like</Button>
-          <Button icon="comment-outline" compact>Comment</Button>
-          <Button icon="share-outline" compact>Share</Button>
-        </Card.Actions>
-      </Card>
-    );
-  }
+          <Card.Actions>
+            <Button icon="heart-outline" compact>Like</Button>
+            <Button icon="comment-outline" compact>Comment</Button>
+            <Button icon="share-outline" compact>Share</Button>
+          </Card.Actions>
+        </Card>
+      );
+    }
 
-  // Event post
-  if (item.action === 'created_event') {
+    // Simple activity
+    const actionEmoji = { followed: '👥', visited: '📍' }[item.action] || '•';
+    const actionText = { followed: 'followed', visited: 'visited' }[item.action] || item.action;
+
     return (
-      <Card style={s.card} onPress={onPress}>
-        <Card.Title
-          title={item.userName || 'User'}
-          subtitle={`created an event • ${timeAgo(item.timestamp)}`}
-          left={(props) => <Avatar.Text {...props} size={40} label={(item.userName?.[0] || 'U').toUpperCase()} />}
-        />
-        {item.eventCover && (
-          <Card.Cover source={{ uri: item.eventCover }} />
-        )}
-        <Card.Content style={{ marginTop: 8 }}>
-          <Text style={{ fontWeight: '700', fontSize: 16 }}>{item.targetName}</Text>
-          {item.eventDate && (
-            <View style={s.eventMeta}>
-              <Ionicons name="calendar-outline" size={14} color="#666" />
-              <Text style={{ marginLeft: 4, fontSize: 12, color: '#666' }}>
-                {item.eventDate}
-              </Text>
-            </View>
-          )}
-          {item.eventLocation && (
-            <View style={s.eventMeta}>
-              <Ionicons name="location-outline" size={14} color="#666" />
-              <Text style={{ marginLeft: 4, fontSize: 12, color: '#666' }}>
-                {item.eventLocation}
-              </Text>
-            </View>
-          )}
-        </Card.Content>
-        <Card.Actions>
-          <Button icon="heart-outline" compact>Like</Button>
-          <Button icon="comment-outline" compact>Comment</Button>
-          <Button icon="share-outline" compact>Share</Button>
-        </Card.Actions>
-      </Card>
+      <TouchableOpacity style={s.simpleItem} onPress={onPress}>
+        <View style={s.simpleAvatar}>
+          <Text style={{ fontSize: 20 }}>{actionEmoji}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text>
+            <Text style={{ fontWeight: '600' }}>{item.userName || 'User'}</Text>
+            {' '}{actionText}{' '}
+            <Text style={{ fontWeight: '600' }}>{item.targetName}</Text>
+          </Text>
+          <Text style={s.simpleTime}>{timeAgo(item.timestamp)}</Text>
+        </View>
+      </TouchableOpacity>
+    );
+  } catch (error) {
+    console.error('[FEED] FeedPost render error:', error, item);
+    return (
+      <View style={{ padding: 16, backgroundColor: '#ffcccc', borderRadius: 8 }}>
+        <Text>Error rendering post</Text>
+      </View>
     );
   }
-
-  // Simple activity
-  const actionEmoji = { followed: '👥', visited: '📍' }[item.action] || '•';
-  const actionText = { followed: 'followed', visited: 'visited' }[item.action] || item.action;
-
-  return (
-    <TouchableOpacity style={s.simpleItem} onPress={onPress}>
-      <View style={s.simpleAvatar}>
-        <Text style={{ fontSize: 20 }}>{actionEmoji}</Text>
-      </View>
-      <View style={{ flex: 1 }}>
-        <Text>
-          <Text style={{ fontWeight: '600' }}>{item.userName || 'User'}</Text>
-          {' '}{actionText}{' '}
-          <Text style={{ fontWeight: '600' }}>{item.targetName}</Text>
-        </Text>
-        <Text style={s.simpleTime}>{timeAgo(item.timestamp)}</Text>
-      </View>
-    </TouchableOpacity>
-  );
 }
 
 export default function FeedScreen({ navigation }) {
