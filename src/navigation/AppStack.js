@@ -1,8 +1,9 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
-import { IconButton } from 'react-native-paper';
+import { IconButton, Badge } from 'react-native-paper';
 import { COLORS } from '../config/constants';
+import NotificationDropdown from '../components/NotificationDropdown';
 
 // Home
 import HomeScreen from '../screens/home/HomeScreen';
@@ -60,14 +61,7 @@ function HomeStack({ navigation }) {
         component={HomeScreen} 
         options={{ 
           title: 'ExploreEase',
-          headerRight: () => (
-            <IconButton 
-              icon="bell" 
-              iconColor={COLORS.primary}
-              size={24}
-              onPress={() => navigation.navigate('Notifications')}
-            />
-          ),
+          headerRight: () => <NotificationBell navigation={navigation} />,
         }} 
       />
       <Stack.Screen name="Search" component={SearchScreen} options={{ title: 'Search' }} />
@@ -89,14 +83,7 @@ function DiscoverStack({ navigation }) {
         component={DiscoverScreen} 
         options={{ 
           title: 'Discover',
-          headerRight: () => (
-            <IconButton 
-              icon="bell" 
-              iconColor={COLORS.primary}
-              size={24}
-              onPress={() => navigation.navigate('Home', { screen: 'Notifications' })}
-            />
-          ),
+          headerRight: () => <NotificationBell navigation={navigation} />,
         }} 
       />
       <Stack.Screen name="PlaceDetail" component={PlaceDetailScreen} options={{ title: 'Place Details' }} />
@@ -115,14 +102,7 @@ function EventStack({ navigation }) {
         component={EventListScreen} 
         options={{ 
           title: 'Events',
-          headerRight: () => (
-            <IconButton 
-              icon="bell" 
-              iconColor={COLORS.primary}
-              size={24}
-              onPress={() => navigation.navigate('Home', { screen: 'Notifications' })}
-            />
-          ),
+          headerRight: () => <NotificationBell navigation={navigation} />,
         }} 
       />
       <Stack.Screen name="EventDetail" component={EventDetailScreen} options={{ title: 'Event Details' }} />
@@ -139,14 +119,7 @@ function PlannerStack({ navigation }) {
         component={ItineraryListScreen} 
         options={{ 
           title: 'My Plans',
-          headerRight: () => (
-            <IconButton 
-              icon="bell" 
-              iconColor={COLORS.primary}
-              size={24}
-              onPress={() => navigation.navigate('Home', { screen: 'Notifications' })}
-            />
-          ),
+          headerRight: () => <NotificationBell navigation={navigation} />,
         }} 
       />
       <Stack.Screen name="ItineraryDetail" component={ItineraryDetailScreen} options={{ title: 'Itinerary' }} />
@@ -162,14 +135,7 @@ function ProfileStack({ navigation }) {
         component={MyProfileScreen} 
         options={{ 
           title: 'My Profile',
-          headerRight: () => (
-            <IconButton 
-              icon="bell" 
-              iconColor={COLORS.primary}
-              size={24}
-              onPress={() => navigation.navigate('Home', { screen: 'Notifications' })}
-            />
-          ),
+          headerRight: () => <NotificationBell navigation={navigation} />,
         }} 
       />
       <Stack.Screen name="Preferences" component={PreferencesScreen} options={{ title: 'Preferences' }} />
@@ -196,6 +162,29 @@ const getTabIcon = (routeName) => {
     default: return 'circle';
   }
 };
+
+function NotificationBell({ navigation }) {
+  const [showDropdown, setShowDropdown] = useState(false);
+
+  return (
+    <>
+      <IconButton 
+        icon="bell" 
+        iconColor={COLORS.primary}
+        size={24}
+        onPress={() => setShowDropdown(true)}
+      />
+      <NotificationDropdown 
+        visible={showDropdown}
+        onDismiss={() => setShowDropdown(false)}
+        onSeeAll={() => {
+          setShowDropdown(false);
+          navigation.navigate('Notifications');
+        }}
+      />
+    </>
+  );
+}
 
 export default function AppStack() {
   return (
