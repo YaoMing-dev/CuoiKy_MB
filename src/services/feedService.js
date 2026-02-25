@@ -51,6 +51,22 @@ export const getUserFeed = async (userId, limitCount = 50) => {
 // ── Seed sample feed data ──────────────────────────────────────────────────────
 export const seedFeedData = async (currentUserId) => {
   try {
+    // Get real places and events from Firestore
+    const placesSnap = await getDocs(collection(db, 'places'));
+    const eventsSnap = await getDocs(collection(db, 'events'));
+    
+    const places = placesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+    const events = eventsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
+
+    // Find specific places/events or use first available
+    const benThanh = places.find(p => p.name?.includes('Ben Thanh')) || places[0];
+    const hoiAn = places.find(p => p.name?.includes('Hoi An')) || places[1];
+    const haLong = places.find(p => p.name?.includes('Ha Long')) || places[2];
+    const daLat = places.find(p => p.city?.includes('Da Lat')) || places[3];
+    
+    const foodEvent = events.find(e => e.category === 'food') || events[0];
+    const sportsEvent = events.find(e => e.category === 'sports') || events[1];
+
     const sampleActivities = [
       // Review post with rating and text
       {
@@ -58,11 +74,11 @@ export const seedFeedData = async (currentUserId) => {
         userName: 'Anna Nguyen',
         action: 'reviewed',
         targetType: 'place',
-        targetId: 'place_benthanhmarket', // Sync with actual seeded places
-        targetName: 'Ben Thanh Market',
+        targetId: benThanh?.id || 'place_1',
+        targetName: benThanh?.name || 'Ben Thanh Market',
         rating: 5,
         reviewText: 'Amazing local experience! The vendors are so friendly and the food is absolutely delicious. Must-visit when in Saigon! 🇻🇳',
-        imageUrl: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800',
+        imageUrl: benThanh?.imageUrl || 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800',
       },
       // Event post with details
       {
@@ -70,11 +86,11 @@ export const seedFeedData = async (currentUserId) => {
         userName: 'John Smith',
         action: 'created_event',
         targetType: 'event',
-        targetId: 'event_foodfestival',
-        targetName: 'Saigon Street Food Festival',
-        eventCover: 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800',
-        eventDate: 'Th 7, 28/02/2026',
-        eventLocation: 'Ho Chi Minh City',
+        targetId: foodEvent?.id || 'event_1',
+        targetName: foodEvent?.title || 'Saigon Street Food Festival',
+        eventCover: foodEvent?.imageUrl || 'https://images.unsplash.com/photo-1555939594-58d7cb561ad1?w=800',
+        eventDate: foodEvent?.date || 'Th 7, 28/02/2026',
+        eventLocation: foodEvent?.city || 'Ho Chi Minh City',
       },
       // Review with high rating
       {
@@ -82,11 +98,11 @@ export const seedFeedData = async (currentUserId) => {
         userName: 'Linh Tran',
         action: 'reviewed',
         targetType: 'place',
-        targetId: 'place_hoian',
-        targetName: 'Hoi An Ancient Town',
+        targetId: hoiAn?.id || 'place_2',
+        targetName: hoiAn?.name || 'Hoi An Ancient Town',
         rating: 5,
         reviewText: 'Magical lanterns at night! 🏮 The architecture is stunning and the atmosphere is so peaceful. Perfect for photography lovers!',
-        imageUrl: 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800',
+        imageUrl: hoiAn?.imageUrl || 'https://images.unsplash.com/photo-1583417319070-4a69db38a482?w=800',
       },
       // Simple follow activity
       {
@@ -103,11 +119,11 @@ export const seedFeedData = async (currentUserId) => {
         userName: 'Anna Nguyen',
         action: 'created_event',
         targetType: 'event',
-        targetId: 'event_volleyball',
-        targetName: 'Beach Volleyball Tournament',
-        eventCover: 'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=800',
-        eventDate: 'Sat 1, 01/03/2026',
-        eventLocation: 'Nha Trang Beach',
+        targetId: sportsEvent?.id || 'event_2',
+        targetName: sportsEvent?.title || 'Beach Volleyball Tournament',
+        eventCover: sportsEvent?.imageUrl || 'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=800',
+        eventDate: sportsEvent?.date || 'Sat 1, 01/03/2026',
+        eventLocation: sportsEvent?.city || 'Nha Trang Beach',
       },
       // Review with photo
       {
@@ -115,11 +131,11 @@ export const seedFeedData = async (currentUserId) => {
         userName: 'David Le',
         action: 'reviewed',
         targetType: 'place',
-        targetId: 'place_halong',
-        targetName: 'Ha Long Bay',
+        targetId: haLong?.id || 'place_3',
+        targetName: haLong?.name || 'Ha Long Bay',
         rating: 5,
         reviewText: 'Breathtaking scenery! The cruise was incredible and the limestone karsts are even more beautiful in person. Worth every penny! ⛵️',
-        imageUrl: 'https://images.unsplash.com/photo-1528127269322-539801943592?w=800',
+        imageUrl: haLong?.imageUrl || 'https://images.unsplash.com/photo-1528127269322-539801943592?w=800',
       },
       // Simple visit
       {
@@ -127,8 +143,8 @@ export const seedFeedData = async (currentUserId) => {
         userName: 'Emily Pham',
         action: 'visited',
         targetType: 'place',
-        targetId: 'place_dalat',
-        targetName: 'Da Lat City',
+        targetId: daLat?.id || 'place_4',
+        targetName: daLat?.name || 'Da Lat City',
       },
     ];
 

@@ -49,6 +49,11 @@ function FeedPost({ item, onPress }) {
         {item.imageUrl && (
           <Card.Cover source={{ uri: item.imageUrl }} style={{ marginTop: SIZES.sm }} />
         )}
+        <Card.Actions style={s.actions}>
+          <Button icon="heart-outline" compact>Like</Button>
+          <Button icon="comment-outline" compact>Comment</Button>
+          <Button icon="share-outline" compact>Share</Button>
+        </Card.Actions>
       </Card>
     );
   }
@@ -84,6 +89,11 @@ function FeedPost({ item, onPress }) {
             </View>
           )}
         </Card.Content>
+        <Card.Actions style={s.actions}>
+          <Button icon="heart-outline" compact>Like</Button>
+          <Button icon="comment-outline" compact>Comment</Button>
+          <Button icon="share-outline" compact>Share</Button>
+        </Card.Actions>
       </Card>
     );
   }
@@ -254,5 +264,9 @@ const s = StyleSheet.create({
     fontSize: 12,
     color: COLORS.textSecondary,
     marginTop: 2,
+  },
+  actions: {
+    paddingHorizontal: SIZES.xs,
+    paddingVertical: SIZES.xs,
   },
 });
