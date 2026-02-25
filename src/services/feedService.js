@@ -66,82 +66,119 @@ export const seedFeedData = async (currentUserId) => {
       throw new Error('Please seed Places and Events first!');
     }
 
-    // Use first available items - simpler approach
-    const place1 = places[0];
-    const place2 = places[1] || places[0];
-    const event1 = events[0];
-    const event2 = events[1] || events[0];
+    // Helper to get random items
+    const getRandomPlaces = (count) => {
+      const shuffled = [...places].sort(() => 0.5 - Math.random());
+      return shuffled.slice(0, Math.min(count, places.length));
+    };
 
-    console.log('[FEED] Using:', {
-      place1: place1.name,
-      place2: place2.name,
-      event1: event1.title,
-      event2: event2.title
-    });
+    const getRandomEvents = (count) => {
+      const shuffled = [...events].sort(() => 0.5 - Math.random());
+      return shuffled.slice(0, Math.min(count, events.length));
+    };
 
-    const sampleActivities = [
-      // Simple review - minimal data
-      {
-        userId: 'user_anna',
-        userName: 'Anna Nguyen',
+    const randomPlaces = getRandomPlaces(10);
+    const randomEvents = getRandomEvents(6);
+
+    const users = [
+      { id: 'anna', name: 'Anna Nguyen' },
+      { id: 'john', name: 'John Smith' },
+      { id: 'linh', name: 'Linh Tran' },
+      { id: 'mike', name: 'Mike Chen' },
+      { id: 'emily', name: 'Emily Pham' },
+      { id: 'david', name: 'David Le' },
+      { id: 'sarah', name: 'Sarah Vo' },
+      { id: 'tom', name: 'Tom Nguyen' },
+    ];
+
+    const reviewTexts = [
+      { stars: 5, text: 'Absolutely amazing! One of the best experiences in Vietnam. Highly recommend! 🌟' },
+      { stars: 5, text: 'Perfect place! Great atmosphere, friendly staff, and beautiful surroundings. Will definitely come back! ❤️' },
+      { stars: 4, text: 'Really enjoyed my visit here. Good food, nice views. Worth checking out! 👍' },
+      { stars: 5, text: 'Incredible experience! Everything was perfect from start to finish. Don\'t miss this! ✨' },
+      { stars: 4, text: 'Lovely place with great vibes. A bit crowded but totally worth it. 😊' },
+      { stars: 5, text: 'Exceeded all expectations! Beautiful location and wonderful memories made here. 🎉' },
+      { stars: 4, text: 'Great spot! Would recommend to anyone visiting the area. Good value too. 💯' },
+      { stars: 5, text: 'Magical experience! The photos don\'t do it justice. You have to see it yourself! 📸' },
+    ];
+
+    const sampleActivities = [];
+
+    // Add diverse review posts (8 reviews)
+    for (let i = 0; i < 8 && i < randomPlaces.length; i++) {
+      const place = randomPlaces[i];
+      const user = users[i % users.length];
+      const review = reviewTexts[i % reviewTexts.length];
+      
+      sampleActivities.push({
+        userId: user.id,
+        userName: user.name,
         action: 'reviewed',
         targetType: 'place',
-        targetId: place1.id,
-        targetName: place1.name,
-        rating: 5,
-        reviewText: 'Amazing place! Highly recommend visiting! 🌟',
-        imageUrl: place1.imageUrl || place1.coverImage || 'https://via.placeholder.com/400',
-      },
-      // Simple event
-      {
-        userId: 'user_john',
-        userName: 'John Smith',
+        targetId: place.id,
+        targetName: place.name,
+        rating: review.stars,
+        reviewText: review.text,
+        imageUrl: place.imageUrl || place.coverImage || 'https://via.placeholder.com/400',
+        likeCount: Math.floor(Math.random() * 50) + 5,
+        commentCount: Math.floor(Math.random() * 20),
+      });
+    }
+
+    // Add event creation posts (6 events)
+    for (let i = 0; i < 6 && i < randomEvents.length; i++) {
+      const event = randomEvents[i];
+      const user = users[(i + 2) % users.length];
+      
+      sampleActivities.push({
+        userId: user.id,
+        userName: user.name,
         action: 'created_event',
         targetType: 'event',
-        targetId: event1.id,
-        targetName: event1.title,
-        eventCover: event1.coverImage || event1.imageUrl || 'https://via.placeholder.com/400',
-        eventDate: event1.date ? new Date(event1.date.seconds * 1000).toLocaleDateString() : 'TBA',
-        eventLocation: event1.city,
-      },
-      // Another review
-      {
-        userId: 'user_linh',
-        userName: 'Linh Tran',
-        action: 'reviewed',
+        targetId: event.id,
+        targetName: event.title,
+        eventCover: event.coverImage || event.imageUrl || 'https://via.placeholder.com/400',
+        eventDate: event.date ? new Date(event.date.seconds * 1000).toLocaleDateString('vi-VN') : 'TBA',
+        eventLocation: event.city,
+        likeCount: Math.floor(Math.random() * 80) + 10,
+        commentCount: Math.floor(Math.random() * 30),
+      });
+    }
+
+    // Add visit activities (4 visits)
+    for (let i = 8; i < 12 && i < randomPlaces.length; i++) {
+      const place = randomPlaces[i % randomPlaces.length];
+      const user = users[(i + 4) % users.length];
+      
+      sampleActivities.push({
+        userId: user.id,
+        userName: user.name,
+        action: 'visited',
         targetType: 'place',
-        targetId: place2.id,
-        targetName: place2.name,
-        rating: 4,
-        reviewText: 'Great experience! Will come back again.',
-        imageUrl: place2.imageUrl || place2.coverImage || 'https://via.placeholder.com/400',
-      },
-      // Simple follow
-      {
-        userId: 'user_mike',
-        userName: 'Mike Chen',
+        targetId: place.id,
+        targetName: place.name,
+      });
+    }
+
+    // Add follow activities (3 follows)
+    for (let i = 0; i < 3; i++) {
+      const user = users[(i + 5) % users.length];
+      sampleActivities.push({
+        userId: user.id,
+        userName: user.name,
         action: 'followed',
         targetType: 'user',
         targetId: currentUserId,
         targetName: 'You',
-      },
-      // Another event
-      {
-        userId: 'user_anna',
-        userName: 'Anna Nguyen',
-        action: 'created_event',
-        targetType: 'event',
-        targetId: event2.id,
-        targetName: event2.title,
-        eventCover: event2.coverImage || event2.imageUrl || 'https://via.placeholder.com/400',
-        eventDate: event2.date ? new Date(event2.date.seconds * 1000).toLocaleDateString() : 'TBA',
-        eventLocation: event2.city,
-      },
-    ];
+      });
+    }
 
-    console.log('[FEED] Creating activities:', sampleActivities.length);
+    // Shuffle activities to mix post types
+    const shuffled = sampleActivities.sort(() => 0.5 - Math.random());
 
-    for (const activity of sampleActivities) {
+    console.log(`[FEED] Creating ${shuffled.length} activities...`);
+
+    for (const activity of shuffled) {
       console.log('[FEED] Adding:', activity.action, activity.targetName);
       await addDoc(collection(db, 'feed'), {
         ...activity,
@@ -149,8 +186,8 @@ export const seedFeedData = async (currentUserId) => {
       });
     }
 
-    console.log(`[FEED] Successfully seeded ${sampleActivities.length} posts`);
-    return sampleActivities.length;
+    console.log(`[FEED] Successfully seeded ${shuffled.length} posts`);
+    return shuffled.length;
   } catch (error) {
     console.error('[FEED] Error seeding:', error);
     throw error;

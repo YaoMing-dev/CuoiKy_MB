@@ -9,6 +9,23 @@ import { auth } from '../../config/firebase';
 import { COLORS, SIZES } from '../../config/constants';
 
 function FeedPost({ item, onPress }) {
+  const [liked, setLiked] = useState(false);
+  const [likeCount, setLikeCount] = useState(item.likeCount || 0);
+
+  const handleLike = () => {
+    setLiked(!liked);
+    setLikeCount(prev => liked ? prev - 1 : prev + 1);
+    // TODO: Save to Firestore
+  };
+
+  const handleComment = () => {
+    Alert.alert('Comments', 'Comment feature coming soon!');
+  };
+
+  const handleShare = () => {
+    Alert.alert('Share', `Share "${item.targetName}" to...`);
+  };
+
   const timeAgo = (timestamp) => {
     if (!timestamp) return 'recently';
     try {
@@ -60,9 +77,18 @@ function FeedPost({ item, onPress }) {
             <Card.Cover source={{ uri: item.imageUrl }} style={{ marginTop: 8 }} />
           )}
           <Card.Actions>
-            <Button icon="heart-outline" compact>Like</Button>
-            <Button icon="comment-outline" compact>Comment</Button>
-            <Button icon="share-outline" compact>Share</Button>
+            <Button 
+              icon={liked ? "heart" : "heart-outline"} 
+              compact 
+              onPress={handleLike}
+              textColor={liked ? "#E91E63" : undefined}
+            >
+              {likeCount > 0 ? likeCount : 'Like'}
+            </Button>
+            <Button icon="comment-outline" compact onPress={handleComment}>
+              {item.commentCount > 0 ? item.commentCount : 'Comment'}
+            </Button>
+            <Button icon="share-outline" compact onPress={handleShare}>Share</Button>
           </Card.Actions>
         </Card>
       );
@@ -100,9 +126,18 @@ function FeedPost({ item, onPress }) {
             )}
           </Card.Content>
           <Card.Actions>
-            <Button icon="heart-outline" compact>Like</Button>
-            <Button icon="comment-outline" compact>Comment</Button>
-            <Button icon="share-outline" compact>Share</Button>
+            <Button 
+              icon={liked ? "heart" : "heart-outline"} 
+              compact 
+              onPress={handleLike}
+              textColor={liked ? "#E91E63" : undefined}
+            >
+              {likeCount > 0 ? likeCount : 'Like'}
+            </Button>
+            <Button icon="comment-outline" compact onPress={handleComment}>
+              {item.commentCount > 0 ? item.commentCount : 'Comment'}
+            </Button>
+            <Button icon="share-outline" compact onPress={handleShare}>Share</Button>
           </Card.Actions>
         </Card>
       );
