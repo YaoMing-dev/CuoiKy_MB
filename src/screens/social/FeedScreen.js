@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert, Share } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
 import { Text, Avatar, ActivityIndicator, Button, Card } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { getFeedItems, seedFeedData } from '../../services/feedService';
-import { auth } from '../../config/firebase';
+import { auth, db } from '../../config/firebase';
 import { COLORS, SIZES } from '../../config/constants';
 import CommentModal from '../../components/CommentModal';
 
@@ -97,9 +98,8 @@ function FeedPost({ item, onPress, onComment }) {
               {likeCount > 0 ? likeCount : 'Like'}
             </Button>
             <Button icon="comment-outline" compact onPress={handleComment}>
-              {item.commentCount > 0 ? item.commentCount : 'Comment'}
+              {commentCount > 0 ? commentCount : 'Comment'}
             </Button>
-            <Button icon="share-outline" compact onPress={handleShare}>Share</Button>
           </Card.Actions>
         </Card>
       );
@@ -146,9 +146,8 @@ function FeedPost({ item, onPress, onComment }) {
               {likeCount > 0 ? likeCount : 'Like'}
             </Button>
             <Button icon="comment-outline" compact onPress={handleComment}>
-              {item.commentCount > 0 ? item.commentCount : 'Comment'}
+              {commentCount > 0 ? commentCount : 'Comment'}
             </Button>
-            <Button icon="share-outline" compact onPress={handleShare}>Share</Button>
           </Card.Actions>
         </Card>
       );

@@ -48,7 +48,62 @@ export const getUserFeed = async (userId, limitCount = 50) => {
   }
 };
 
-// ── Seed sample feed data ──────────────────────────────────────────────────────
+// ── Seed sample comments for feed posts ────────────────────────────────────
+export const seedCommentsForFeed = async (feedItems) => {
+  try {
+    console.log(`[FEED] Seeding comments for ${feedItems.length} posts...`);
+    
+    const users = [
+      'Anna Nguyen', 'John Smith', 'Linh Tran', 'Mike Chen',
+      'Emily Pham', 'David Le', 'Sarah Vo', 'Tom Nguyen'
+    ];
+
+    const commentTexts = [
+      'This looks amazing! 😍',
+      'I want to go here too!',
+      'Thanks for sharing! Very helpful.',
+      'Beautiful place! 🌟',
+      'Added to my bucket list! 📝',
+      'Great recommendation!',
+      'When did you visit?',
+      'How much did it cost?',
+      'Is it worth visiting? 🤔',
+      'Looks incredible! Thanks for the tip! 🙌',
+    ];
+
+    let totalComments = 0;
+
+    for (const feedItem of feedItems) {
+      // Skip follow/visit activities
+      if (feedItem.action === 'followed' || feedItem.action === 'visited') continue;
+
+      // Random 0-5 comments per post
+      const numComments = Math.floor(Math.random() * 6);
+      
+      for (let i = 0; i < numComments; i++) {
+        const user = users[Math.floor(Math.random() * users.length)];
+        const text = commentTexts[Math.floor(Math.random() * commentTexts.length)];
+        
+        await addDoc(collection(db, 'comments'), {
+          feedItemId: feedItem.id,
+          targetType: feedItem.targetType,
+          userId: user.toLowerCase().replace(' ', '_'),
+          userName: user,
+          text,
+          createdAt: serverTimestamp(),
+        });
+        
+        totalComments++;
+      }
+    }
+
+    console.log(`[FEED] ✅ Created ${totalComments} real comments`);
+    return totalComments;
+  } catch (error) {
+    console.error('[FEED] Error seeding comments:', error);
+    throw error;
+  }
+};
 export const seedFeedData = async (currentUserId) => {
   try {
     console.log('[FEED] Starting seed...');
@@ -209,15 +264,27 @@ export const seedFeedData = async (currentUserId) => {
     console.log(`[FEED] ✅ VALIDATION PASSED! Creating ${shuffled.length} activities...`);
     console.log(`[FEED] All targetIds are REAL Firestore IDs - navigation will work!`);
 
+    const createdFeedItems = [];
+
     for (const activity of shuffled) {
       console.log(`[FEED] Adding: ${activity.action} → ${activity.targetType} → ${activity.targetId}`);
-      await addDoc(collection(db, 'feed'), {
-        ...activity,
+      
+      // Remove fake commentCount/likeCount - we'll show real counts
+      const { commentCount, likeCount, ...cleanActivity } = activity;
+      
+      const docRef = await addDoc(collection(db, 'feed'), {
+        ...cleanActivity,
         timestamp: serverTimestamp(),
       });
+      
+      createdFeedItems.push({ id: docRef.id, ...cleanActivity });
     }
 
     console.log(`[FEED] ✅ Successfully seeded ${shuffled.length} posts`);
+    
+    // Now seed real comments
+    await seedCommentsForFeed(createdFeedItems);
+    
     console.log(`[FEED] ✅ Click any post to navigate - IDs are 100% synced!`);
     return shuffled.length;
   } catch (error) {
