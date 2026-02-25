@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert, Share } from 'react-native';
 import { Text, Avatar, ActivityIndicator, Button, Card } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
@@ -7,8 +7,9 @@ import { Ionicons } from '@expo/vector-icons';
 import { getFeedItems, seedFeedData } from '../../services/feedService';
 import { auth } from '../../config/firebase';
 import { COLORS, SIZES } from '../../config/constants';
+import CommentModal from '../../components/CommentModal';
 
-function FeedPost({ item, onPress }) {
+function FeedPost({ item, onPress, onComment }) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(item.likeCount || 0);
 
@@ -19,11 +20,21 @@ function FeedPost({ item, onPress }) {
   };
 
   const handleComment = () => {
-    Alert.alert('Comments', 'Comment feature coming soon!');
+    onComment(item);
   };
 
-  const handleShare = () => {
-    Alert.alert('Share', `Share "${item.targetName}" to...`);
+  const handleShare = async () => {
+    try {
+      const targetEmoji = item.targetType === 'place' ? '📍' : '📅';
+      const message = `Check out ${targetEmoji} ${item.targetName} on ExploreEase!`;
+      
+      await Share.share({
+        message,
+        title: item.targetName,
+      });
+    } catch (error) {
+      console.error('Error sharing:', error);
+    }
   };
 
   const timeAgo = (timestamp) => {
@@ -174,6 +185,7 @@ function FeedPost({ item, onPress }) {
 
 export default function FeedScreen({ navigation }) {
   const [seeding, setSeeding] = useState(false);
+  const [commentModal, setCommentModal] = useState({ visible: false, item: null });
 
   const { data: feedItems = [], isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['feed'],
@@ -196,6 +208,14 @@ export default function FeedScreen({ navigation }) {
     } finally {
       setSeeding(false);
     }
+  };
+
+  const openCommentModal = (item) => {
+    setCommentModal({ visible: true, item });
+  };
+
+  const closeCommentModal = () => {
+    setCommentModal({ visible: false, item: null });
   };
 
   return (
@@ -237,6 +257,7 @@ export default function FeedScreen({ navigation }) {
                   });
                 }
               }}
+              onComment={openCommentModal}
             />
           )}
           contentContainerStyle={{ padding: 8 }}
@@ -244,6 +265,15 @@ export default function FeedScreen({ navigation }) {
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
         />
       )}
+
+      {/* Comment Modal */}
+      <CommentModal
+        visible={commentModal.visible}
+        onDismiss={closeCommentModal}
+        feedItemId={commentModal.item?.id}
+        targetType={commentModal.item?.targetType}
+        targetName={commentModal.item?.targetName}
+      />
     </SafeAreaView>
   );
 }
