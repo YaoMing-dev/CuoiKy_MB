@@ -51,6 +51,8 @@ export const getUserFeed = async (userId, limitCount = 50) => {
 // ── Seed sample feed data ──────────────────────────────────────────────────────
 export const seedFeedData = async (currentUserId) => {
   try {
+    console.log('[FEED] Starting seed...');
+    
     // Get real places and events from Firestore
     const placesSnap = await getDocs(collection(db, 'places'));
     const eventsSnap = await getDocs(collection(db, 'events'));
@@ -58,14 +60,23 @@ export const seedFeedData = async (currentUserId) => {
     const places = placesSnap.docs.map(d => ({ id: d.id, ...d.data() }));
     const events = eventsSnap.docs.map(d => ({ id: d.id, ...d.data() }));
 
+    console.log(`[FEED] Found ${places.length} places, ${events.length} events`);
+
+    if (places.length === 0 || events.length === 0) {
+      throw new Error('Please seed Places and Events first!');
+    }
+
     // Find specific places/events or use first available
     const benThanh = places.find(p => p.name?.includes('Ben Thanh')) || places[0];
-    const hoiAn = places.find(p => p.name?.includes('Hoi An')) || places[1];
-    const haLong = places.find(p => p.name?.includes('Ha Long')) || places[2];
-    const daLat = places.find(p => p.city?.includes('Da Lat')) || places[3];
+    const hoiAn = places.find(p => p.name?.includes('Hoi An')) || places[1] || places[0];
+    const haLong = places.find(p => p.name?.includes('Ha Long')) || places[2] || places[0];
+    const daLat = places.find(p => p.city?.includes('Da Lat')) || places[3] || places[0];
     
     const foodEvent = events.find(e => e.category === 'food') || events[0];
-    const sportsEvent = events.find(e => e.category === 'sports') || events[1];
+    const sportsEvent = events.find(e => e.category === 'sports') || events[1] || events[0];
+
+    console.log('[FEED] Using places:', benThanh?.name, hoiAn?.name);
+    console.log('[FEED] Using events:', foodEvent?.title, sportsEvent?.title);
 
     const sampleActivities = [
       // Review post with rating and text
@@ -155,9 +166,10 @@ export const seedFeedData = async (currentUserId) => {
       });
     }
 
+    console.log(`[FEED] Successfully seeded ${sampleActivities.length} posts`);
     return sampleActivities.length;
   } catch (error) {
-    console.error('Error seeding feed data:', error);
+    console.error('[FEED] Error seeding:', error);
     throw error;
   }
 };
