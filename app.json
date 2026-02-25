@@ -19,7 +19,9 @@
         "googleMapsApiKey": "YOUR_GOOGLE_MAPS_API_KEY"
       },
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "ExploreEase needs your location to find nearby places."
+        "NSLocationWhenInUseUsageDescription": "ExploreEase needs your location to find nearby places.",
+        "NSCameraUsageDescription": "ExploreEase needs camera access to scan QR codes.",
+        "NSUserNotificationsUsageDescription": "ExploreEase needs notification permission to send you event reminders and updates."
       }
     },
     "android": {
@@ -63,6 +65,14 @@
         "expo-image-picker",
         {
           "photosPermission": "ExploreEase needs photo access to upload review and profile images."
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#4A90D9",
+          "sounds": ["./assets/notification.wav"]
         }
       ]
     ]

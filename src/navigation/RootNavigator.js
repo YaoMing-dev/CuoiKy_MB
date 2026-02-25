@@ -4,12 +4,20 @@ import { onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../config/firebase';
 import useAuthStore from '../stores/useAuthStore';
+import useNotifications from '../hooks/useNotifications';
 import AuthStack from './AuthStack';
 import AppStack from './AppStack';
 import { COLORS } from '../config/constants';
 
-export default function RootNavigator() {
+export default function RootNavigator({ navigation }) {
   const { isAuthenticated, isLoading, setUser, setUserProfile, setLoading } = useAuthStore();
+
+  // Setup notifications
+  useNotifications((data) => {
+    // Handle notification tap - navigate based on data
+    // This is a placeholder - actual navigation would need NavigationContainer ref
+    console.log('Notification tapped:', data);
+  });
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {

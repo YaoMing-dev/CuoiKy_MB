@@ -11,25 +11,38 @@ const docToEvent = (d) => ({ id: d.id, ...d.data() });
 
 // ── Get paginated events ──────────────────────────────────────────────────────
 export const getEvents = async (category = null, lastDoc = null, pageSize = PAGE_SIZE) => {
-  const constraints = [];
+  try {
+    const constraints = [];
 
-  if (category && category !== 'all') {
-    constraints.push(where('category', '==', category));
-    constraints.push(where('status', '==', 'upcoming'));
-  } else {
-    constraints.push(where('status', '==', 'upcoming'));
-    constraints.push(orderBy('date', 'asc'));
+    // Simplified query: avoid composite index requirement
+    if (category && category !== 'all') {
+      constraints.push(where('category', '==', category));
+    } else {
+      constraints.push(orderBy('date', 'asc'));
+    }
+
+    if (lastDoc) constraints.push(startAfter(lastDoc));
+    constraints.push(limit(pageSize));
+
+    const snapshot = await getDocs(query(collection(db, 'events'), ...constraints));
+    
+    // Even if collection doesn't exist, Firestore returns empty snapshot (no error)
+    return {
+      events: snapshot.docs.map(docToEvent),
+      lastDoc: snapshot.docs[snapshot.docs.length - 1] ?? null,
+      hasMore: snapshot.docs.length === pageSize,
+    };
+  } catch (error) {
+    console.error('❌ getEvents error:', error.message);
+    console.error('Error code:', error.code);
+    
+    // If collection doesn't exist or permission denied, return empty instead of throwing
+    if (error.code === 'permission-denied' || error.code === 'not-found') {
+      return { events: [], lastDoc: null, hasMore: false };
+    }
+    
+    throw error;
   }
-
-  if (lastDoc) constraints.push(startAfter(lastDoc));
-  constraints.push(limit(pageSize));
-
-  const snapshot = await getDocs(query(collection(db, 'events'), ...constraints));
-  return {
-    events: snapshot.docs.map(docToEvent),
-    lastDoc: snapshot.docs[snapshot.docs.length - 1] ?? null,
-    hasMore: snapshot.docs.length === pageSize,
-  };
 };
 
 // ── Get single event ──────────────────────────────────────────────────────────
@@ -141,18 +154,63 @@ export const seedEvents = async () => {
       status: 'upcoming',
     },
     {
-      title: 'Ben Thanh Night Market Pop-Up',
-      description: 'A special evening pop-up market featuring local artisans, street food vendors, and live traditional music around the iconic Ben Thanh Market area.',
-      category: 'culture',
+      title: 'Saigon Indie Music Night',
+      description: 'An intimate acoustic evening featuring the best emerging Vietnamese indie artists. Enjoy live performances, open mic sessions, and connect with the local music community in a cozy rooftop setting.',
+      category: 'music',
       city: 'Ho Chi Minh City',
-      address: 'Ben Thanh Market area, District 1',
-      date: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-      endDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000),
-      coverImage: 'https://images.unsplash.com/photo-1555396273-367ea4eb4db5?w=600&q=80',
+      address: 'Bui Vien Street, District 1',
+      date: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000),
+      endDate: new Date(Date.now() + 6 * 24 * 60 * 60 * 1000),
+      coverImage: 'https://images.unsplash.com/photo-1511735111819-9a3f7709049c?w=600&q=80',
       organizerId: 'system',
-      organizerName: 'Saigon Night Life',
-      maxAttendees: 300,
-      price: 'free',
+      organizerName: 'Saigon Music Collective',
+      maxAttendees: 80,
+      price: '$',
+      status: 'upcoming',
+    },
+    {
+      title: 'Hanoi Rock & Jazz Festival',
+      description: 'Two-day music festival celebrating Vietnamese and international rock and jazz. Featuring 15+ bands, food stalls, and art installations. Perfect for music lovers of all ages!',
+      category: 'music',
+      city: 'Ha Noi',
+      address: 'My Dinh National Stadium, Hanoi',
+      date: new Date(Date.now() + 12 * 24 * 60 * 60 * 1000),
+      endDate: new Date(Date.now() + 13 * 24 * 60 * 60 * 1000),
+      coverImage: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?w=600&q=80',
+      organizerId: 'system',
+      organizerName: 'Hanoi Music Festival Org',
+      maxAttendees: 5000,
+      price: '$$',
+      status: 'upcoming',
+    },
+    {
+      title: 'Da Nang Beach Volleyball Tournament',
+      description: 'Annual beach volleyball competition open to amateur and semi-pro teams. Play on pristine My Khe Beach with prizes, refreshments, and beachside entertainment. Registration includes team jersey!',
+      category: 'sports',
+      city: 'Da Nang',
+      address: 'My Khe Beach, Da Nang',
+      date: new Date(Date.now() + 8 * 24 * 60 * 60 * 1000),
+      endDate: new Date(Date.now() + 9 * 24 * 60 * 60 * 1000),
+      coverImage: 'https://images.unsplash.com/photo-1612872087720-bb876e2e67d1?w=600&q=80',
+      organizerId: 'system',
+      organizerName: 'Da Nang Sports Club',
+      maxAttendees: 64,
+      price: '$',
+      status: 'upcoming',
+    },
+    {
+      title: 'Saigon River Marathon 2026',
+      description: 'Join thousands of runners in Vietnam\'s premier marathon event! Choose from 5K, 10K, half-marathon, or full marathon routes along the scenic Saigon River. All finishers receive medals and race shirts.',
+      category: 'sports',
+      city: 'Ho Chi Minh City',
+      address: 'Starting point: Thu Thiem Bridge, District 2',
+      date: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      endDate: new Date(Date.now() + 15 * 24 * 60 * 60 * 1000),
+      coverImage: 'https://images.unsplash.com/photo-1452626038306-9aae5e071dd3?w=600&q=80',
+      organizerId: 'system',
+      organizerName: 'Saigon Runners Club',
+      maxAttendees: 3000,
+      price: '$$',
       status: 'upcoming',
     },
   ];

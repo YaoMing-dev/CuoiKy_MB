@@ -58,7 +58,7 @@ export default function EventListScreen({ navigation }) {
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState('');
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, refetch } =
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, error, refetch } =
     useInfiniteQuery({
       queryKey: ['events', cat],
       queryFn: ({ pageParam }) => getEvents(cat === 'all' ? null : cat, pageParam),
@@ -67,13 +67,18 @@ export default function EventListScreen({ navigation }) {
       staleTime: 2 * 60 * 1000,
     });
 
+  // Debug logging
+  if (isError) {
+    console.error('❌ EventListScreen query error:', error);
+  }
+
   const events = data?.pages.flatMap((p) => p.events) ?? [];
 
   const handleSeed = async () => {
     setSeeding(true); setSeedMsg('');
     try {
       const n = await seedEvents();
-      setSeedMsg('✅ Seeded ' + n + ' events!');
+      setSeedMsg(`✅ Seeded ${n} events!`);
       queryClient.invalidateQueries({ queryKey: ['events'] });
     } catch (e) { setSeedMsg('❌ ' + e.message); }
     finally { setSeeding(false); }
@@ -88,6 +93,7 @@ export default function EventListScreen({ navigation }) {
         </TouchableOpacity>
       </View>
 
+      {/* Always show seed button if no events, even on error */}
       {!isLoading && events.length === 0 && (
         <View style={s.seedRow}>
           <TouchableOpacity style={s.seedBtn} onPress={handleSeed} disabled={seeding}>
@@ -114,16 +120,15 @@ export default function EventListScreen({ navigation }) {
         <View style={s.center}><ActivityIndicator size="large" color={COLORS.primary} /></View>
       ) : isError ? (
         <View style={s.center}>
-          <Text style={s.emptyText}>Failed to load events.</Text>
-          <TouchableOpacity onPress={refetch} style={{ padding: 12 }}>
-            <Text style={{ color: COLORS.primary, fontWeight: '600' }}>Retry</Text>
-          </TouchableOpacity>
+          <Text style={{ fontSize: 48 }}>⚠️</Text>
+          <Text style={s.emptyText}>Collection not found</Text>
+          <Text style={s.emptyHint}>Click "Seed Sample Events" button above to create events collection</Text>
         </View>
       ) : events.length === 0 ? (
         <View style={s.center}>
           <Text style={{ fontSize: 48 }}>📅</Text>
           <Text style={s.emptyText}>No events yet</Text>
-          <Text style={s.emptyHint}>Seed sample events or create your own!</Text>
+          <Text style={s.emptyHint}>Click "Seed Sample Events" button above or create your own!</Text>
         </View>
       ) : (
         <FlatList
@@ -177,4 +182,6 @@ const s = StyleSheet.create({
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: SIZES.sm },
   emptyText: { fontSize: 18, fontWeight: '700', color: COLORS.text },
   emptyHint: { fontSize: 13, color: COLORS.textSecondary, textAlign: 'center', paddingHorizontal: SIZES.xl },
+  emptyBtn: { marginTop: SIZES.sm, backgroundColor: COLORS.primary, borderRadius: 8, paddingHorizontal: 20, paddingVertical: 10 },
+  emptyBtnText: { color: '#fff', fontWeight: '700', fontSize: 14 },
 });
