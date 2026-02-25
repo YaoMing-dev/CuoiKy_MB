@@ -1,30 +1,15 @@
 import React, { useState } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
-import { Text, Avatar, Divider, ActivityIndicator, Button } from 'react-native-paper';
+import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert, Image } from 'react-native';
+import { Text, Avatar, ActivityIndicator, Button, Card } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
+import { Ionicons } from '@expo/vector-icons';
 import { getFeedItems, seedFeedData } from '../../services/feedService';
 import { auth } from '../../config/firebase';
 import { COLORS, SIZES } from '../../config/constants';
 
-const ACTION_EMOJI = {
-  reviewed: '⭐',
-  created_event: '📅',
-  followed: '👥',
-  visited: '📍',
-};
-
-const ACTION_TEXT = {
-  reviewed: 'reviewed',
-  created_event: 'created event',
-  followed: 'followed',
-  visited: 'visited',
-};
-
-function FeedItem({ item, onPress }) {
-  const emoji = ACTION_EMOJI[item.action] || '•';
-  const actionText = ACTION_TEXT[item.action] || item.action;
-  
+// Rich feed post component (like Facebook/X)
+function FeedPost({ item, onPress }) {
   const timeAgo = (timestamp) => {
     if (!timestamp) return 'recently';
     const date = timestamp?.toDate ? timestamp.toDate() : new Date(timestamp);
@@ -35,18 +20,97 @@ function FeedItem({ item, onPress }) {
     return `${Math.floor(seconds / 86400)}d ago`;
   };
 
+  // Review post with rating and text
+  if (item.action === 'reviewed') {
+    return (
+      <Card style={s.card} onPress={onPress}>
+        <Card.Title
+          title={item.userName || 'User'}
+          subtitle={`reviewed ${item.targetName} • ${timeAgo(item.timestamp)}`}
+          left={(props) => <Avatar.Text {...props} size={40} label={item.userName?.[0] || 'U'} />}
+        />
+        {item.rating && (
+          <View style={s.rating}>
+            {[1, 2, 3, 4, 5].map((star) => (
+              <Ionicons
+                key={star}
+                name={star <= item.rating ? 'star' : 'star-outline'}
+                size={16}
+                color="#FFB800"
+              />
+            ))}
+          </View>
+        )}
+        {item.reviewText && (
+          <Card.Content style={{ marginTop: SIZES.sm }}>
+            <Text variant="bodyMedium">{item.reviewText}</Text>
+          </Card.Content>
+        )}
+        {item.imageUrl && (
+          <Card.Cover source={{ uri: item.imageUrl }} style={{ marginTop: SIZES.sm }} />
+        )}
+      </Card>
+    );
+  }
+
+  // Event post with cover and details
+  if (item.action === 'created_event') {
+    return (
+      <Card style={s.card} onPress={onPress}>
+        <Card.Title
+          title={item.userName || 'User'}
+          subtitle={`created an event • ${timeAgo(item.timestamp)}`}
+          left={(props) => <Avatar.Text {...props} size={40} label={item.userName?.[0] || 'U'} />}
+        />
+        {item.eventCover && (
+          <Card.Cover source={{ uri: item.eventCover }} />
+        )}
+        <Card.Content style={{ marginTop: SIZES.sm }}>
+          <Text variant="titleMedium" style={{ fontWeight: '700' }}>{item.targetName}</Text>
+          {item.eventDate && (
+            <View style={s.eventMeta}>
+              <Ionicons name="calendar-outline" size={14} color={COLORS.textSecondary} />
+              <Text variant="bodySmall" style={{ marginLeft: 4, color: COLORS.textSecondary }}>
+                {item.eventDate}
+              </Text>
+            </View>
+          )}
+          {item.eventLocation && (
+            <View style={s.eventMeta}>
+              <Ionicons name="location-outline" size={14} color={COLORS.textSecondary} />
+              <Text variant="bodySmall" style={{ marginLeft: 4, color: COLORS.textSecondary }}>
+                {item.eventLocation}
+              </Text>
+            </View>
+          )}
+        </Card.Content>
+      </Card>
+    );
+  }
+
+  // Simple activity (follow, visit)
+  const actionEmoji = {
+    followed: '👥',
+    visited: '📍',
+  }[item.action] || '•';
+
+  const actionText = {
+    followed: 'followed',
+    visited: 'visited',
+  }[item.action] || item.action;
+
   return (
-    <TouchableOpacity style={s.item} onPress={onPress} activeOpacity={0.7}>
-      <View style={s.avatar}>
-        <Text style={{ fontSize: 24 }}>{emoji}</Text>
+    <TouchableOpacity style={s.simpleItem} onPress={onPress}>
+      <View style={s.simpleAvatar}>
+        <Text style={{ fontSize: 20 }}>{actionEmoji}</Text>
       </View>
-      <View style={s.content}>
-        <Text style={s.activityText}>
-          <Text style={s.userName}>Someone</Text>
-          <Text style={s.action}> {actionText} </Text>
-          <Text style={s.targetName}>{item.targetName}</Text>
+      <View style={{ flex: 1 }}>
+        <Text>
+          <Text style={{ fontWeight: '600' }}>{item.userName || 'User'}</Text>
+          {' '}{actionText}{' '}
+          <Text style={{ fontWeight: '600' }}>{item.targetName}</Text>
         </Text>
-        <Text style={s.time}>{timeAgo(item.timestamp)}</Text>
+        <Text style={s.simpleTime}>{timeAgo(item.timestamp)}</Text>
       </View>
     </TouchableOpacity>
   );
@@ -66,7 +130,7 @@ export default function FeedScreen({ navigation }) {
       setSeeding(true);
       const count = await seedFeedData(auth.currentUser?.uid || 'current_user');
       await refetch();
-      Alert.alert('Success', `Added ${count} sample feed activities`);
+      Alert.alert('Success', `Added ${count} sample feed posts`);
     } catch (error) {
       Alert.alert('Error', error.message);
     } finally {
@@ -103,7 +167,7 @@ export default function FeedScreen({ navigation }) {
           data={feedItems}
           keyExtractor={(item) => item.id}
           renderItem={({ item }) => (
-            <FeedItem
+            <FeedPost
               item={item}
               onPress={() => {
                 if (item.targetType === 'place') {
@@ -116,15 +180,16 @@ export default function FeedScreen({ navigation }) {
                     screen: 'EventDetail',
                     params: { eventId: item.targetId },
                   });
+                } else if (item.targetType === 'user') {
+                  navigation.navigate('UserProfile', { userId: item.targetId });
                 }
               }}
             />
           )}
-          ItemSeparatorComponent={() => <Divider />}
+          contentContainerStyle={{ padding: SIZES.sm, gap: SIZES.sm }}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} colors={[COLORS.primary]} />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
           }
-          contentContainerStyle={feedItems.length === 0 ? s.emptyList : null}
         />
       )}
     </SafeAreaView>
@@ -135,16 +200,59 @@ const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: COLORS.background },
   header: { padding: SIZES.md, paddingBottom: SIZES.sm },
   title: { fontSize: 26, fontWeight: '800', color: COLORS.text },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: SIZES.sm },
-  emptyText: { fontSize: 18, fontWeight: '700', color: COLORS.text },
-  emptyHint: { fontSize: 13, color: COLORS.textSecondary, textAlign: 'center', paddingHorizontal: SIZES.xl },
-  emptyList: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  item: { flexDirection: 'row', padding: SIZES.md, backgroundColor: '#fff', alignItems: 'center' },
-  avatar: { width: 48, height: 48, borderRadius: 24, backgroundColor: '#F5F5F5', justifyContent: 'center', alignItems: 'center', marginRight: SIZES.sm },
-  content: { flex: 1 },
-  activityText: { fontSize: 14, lineHeight: 20, marginBottom: 4 },
-  userName: { fontWeight: '700', color: COLORS.text },
-  action: { color: COLORS.textSecondary },
-  targetName: { fontWeight: '600', color: COLORS.primary },
-  time: { fontSize: 12, color: COLORS.textSecondary },
+  center: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: SIZES.sm,
+    padding: SIZES.xl,
+  },
+  emptyText: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: COLORS.text,
+    marginTop: SIZES.sm,
+  },
+  emptyHint: {
+    fontSize: 13,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    paddingHorizontal: SIZES.xl,
+  },
+  card: {
+    marginBottom: SIZES.sm,
+    backgroundColor: '#fff',
+  },
+  rating: {
+    flexDirection: 'row',
+    paddingHorizontal: SIZES.md,
+    gap: 2,
+  },
+  eventMeta: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  simpleItem: {
+    flexDirection: 'row',
+    padding: SIZES.md,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    marginBottom: SIZES.sm,
+    gap: SIZES.sm,
+    alignItems: 'flex-start',
+  },
+  simpleAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F5F5F5',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  simpleTime: {
+    fontSize: 12,
+    color: COLORS.textSecondary,
+    marginTop: 2,
+  },
 });
