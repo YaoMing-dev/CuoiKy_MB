@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal,
+  View, Text, TouchableOpacity, ScrollView, StyleSheet, Modal, ActivityIndicator,
 } from 'react-native';
 import { Divider, Badge } from 'react-native-paper';
 import { Ionicons } from '@expo/vector-icons';
@@ -13,35 +13,58 @@ export default function NotificationDropdown({ visible, onDismiss, onSeeAll }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!auth.currentUser || !visible) return;
+    if (!visible) return;
 
-    const q = query(
-      collection(db, 'notifications'),
-      where('userId', '==', auth.currentUser.uid),
-      orderBy('createdAt', 'desc'),
-      limit(5)
-    );
+    const loadNotifs = async () => {
+      try {
+        setLoading(true);
+        const { getNotifications } = await import('../services/notificationService');
+        
+        // IMPORTANT: Use real Firebase Auth UID
+        const currentUserId = auth.currentUser?.uid;
+        console.log('[NOTIFICATION] Current auth userId:', currentUserId);
+        
+        if (!currentUserId) {
+          console.warn('[NOTIFICATION] No user logged in, showing empty notifications');
+          setNotifications([]);
+          setLoading(false);
+          return;
+        }
+        
+        console.log('[NOTIFICATION] Loading for userId:', currentUserId);
+        const data = await getNotifications(currentUserId, 10);
+        console.log('[NOTIFICATION] Loaded:', data.length, 'notifications');
+        
+        if (data.length === 0) {
+          console.warn('[NOTIFICATION] No notifications found for userId:', currentUserId);
+        }
+        
+        setNotifications(data);
+      } catch (error) {
+        console.error('[NOTIFICATION] Load error:', error);
+        setNotifications([]);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    const unsubscribe = onSnapshot(q, (snap) => {
-      const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
-      setNotifications(items);
-      setLoading(false);
-    });
-
-    return () => unsubscribe();
+    loadNotifs();
   }, [visible]);
 
   const getIcon = (type) => {
     switch (type) {
+      case 'like': return 'heart';
+      case 'comment': return 'chatbubble';
       case 'follow': return 'person-add';
       case 'review': return 'star';
+      case 'check_in': return 'location';
       case 'event_reminder': return 'calendar';
       case 'message': return 'chatbubble';
       default: return 'notifications';
     }
   };
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const unreadCount = notifications.filter((n) => !n.isRead).length;
 
   return (
     <Modal
@@ -63,6 +86,14 @@ export default function NotificationDropdown({ visible, onDismiss, onSeeAll }) {
           </View>
           <Divider />
 
+          {/* Loading state */}
+          {loading && (
+            <View style={s.empty}>
+              <ActivityIndicator size="large" color={COLORS.primary} />
+              <Text style={s.emptyText}>Loading...</Text>
+            </View>
+          )}
+
           {/* Empty state */}
           {!loading && notifications.length === 0 && (
             <View style={s.empty}>
@@ -72,7 +103,7 @@ export default function NotificationDropdown({ visible, onDismiss, onSeeAll }) {
           )}
 
           {/* Notification list */}
-          {notifications.length > 0 && (
+          {!loading && notifications.length > 0 && (
             <ScrollView style={s.list} showsVerticalScrollIndicator={false}>
               {notifications.map((item) => {
                 const timeAgo = item.createdAt
@@ -87,7 +118,7 @@ export default function NotificationDropdown({ visible, onDismiss, onSeeAll }) {
                 return (
                   <TouchableOpacity
                     key={item.id}
-                    style={[s.item, !item.read && s.itemUnread]}
+                    style={[s.item, !item.isRead && s.itemUnread]}
                     onPress={() => {
                       // TODO: Mark as read & navigate
                       onDismiss();
@@ -97,10 +128,18 @@ export default function NotificationDropdown({ visible, onDismiss, onSeeAll }) {
                       <Ionicons name={getIcon(item.type)} size={18} color={COLORS.primary} />
                     </View>
                     <View style={s.itemContent}>
-                      <Text style={s.itemTitle}>{item.message}</Text>
+                      <Text style={s.itemTitle}>
+                        <Text style={{ fontWeight: '600' }}>{item.actorName}</Text>
+                        {' '}{item.message}
+                      </Text>
+                      {item.preview && (
+                        <Text style={{ fontSize: 12, color: '#666', marginTop: 2 }} numberOfLines={1}>
+                          "{item.preview}"
+                        </Text>
+                      )}
                       <Text style={s.itemTime}>{timeLabel}</Text>
                     </View>
-                    {!item.read && <View style={s.unreadDot} />}
+                    {!item.isRead && <View style={s.unreadDot} />}
                   </TouchableOpacity>
                 );
               })}

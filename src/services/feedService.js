@@ -51,7 +51,12 @@ export const getUserFeed = async (userId, limitCount = 50) => {
 // ── Seed sample comments for feed posts ────────────────────────────────────
 export const seedCommentsForFeed = async (feedItems) => {
   try {
-    console.log(`[FEED] Seeding comments for ${feedItems.length} posts...`);
+    console.log(`[FEED] 📝 Seeding comments for ${feedItems.length} posts...`);
+    
+    if (!feedItems || feedItems.length === 0) {
+      console.warn('[FEED] ⚠️ No feed items to seed comments for!');
+      return 0;
+    }
     
     const users = [
       'Anna Nguyen', 'John Smith', 'Linh Tran', 'Mike Chen',
@@ -74,11 +79,15 @@ export const seedCommentsForFeed = async (feedItems) => {
     let totalComments = 0;
 
     for (const feedItem of feedItems) {
-      // Skip follow/visit activities
-      if (feedItem.action === 'followed' || feedItem.action === 'visited') continue;
+      // Only add comments to review posts
+      if (feedItem.action !== 'reviewed') {
+        console.log(`[FEED] Skipping comments for ${feedItem.action} activity`);
+        continue;
+      }
 
-      // Random 0-5 comments per post
-      const numComments = Math.floor(Math.random() * 6);
+      // Random 1-8 comments per post (guaranteed at least 1)
+      const numComments = Math.floor(Math.random() * 8) + 1;
+      console.log(`[FEED] Adding ${numComments} comments to feedItem ${feedItem.id}`);
       
       for (let i = 0; i < numComments; i++) {
         const user = users[Math.floor(Math.random() * users.length)];
@@ -97,10 +106,61 @@ export const seedCommentsForFeed = async (feedItems) => {
       }
     }
 
-    console.log(`[FEED] ✅ Created ${totalComments} real comments`);
+    console.log(`[FEED] ✅ Created ${totalComments} real comments in 'comments' collection`);
     return totalComments;
   } catch (error) {
-    console.error('[FEED] Error seeding comments:', error);
+    console.error('[FEED] ❌ Error seeding comments:', error);
+    throw error;
+  }
+};
+
+export const seedLikesForFeed = async (feedItems) => {
+  try {
+    console.log(`[FEED] ❤️ Seeding likes for ${feedItems.length} posts...`);
+    
+    if (!feedItems || feedItems.length === 0) {
+      console.warn('[FEED] ⚠️ No feed items to seed likes for!');
+      return 0;
+    }
+    
+    const users = [
+      'anna_nguyen', 'john_smith', 'linh_tran', 'mike_chen',
+      'emily_pham', 'david_le', 'sarah_vo', 'tom_nguyen',
+      'peter_vo', 'lisa_pham', 'kevin_tran', 'jenny_nguyen'
+    ];
+
+    let totalLikes = 0;
+
+    for (const feedItem of feedItems) {
+      // Skip follow activities
+      if (feedItem.action === 'followed') {
+        console.log(`[FEED] Skipping likes for followed activity`);
+        continue;
+      }
+
+      // Random 2-15 likes per post (more realistic)
+      const numLikes = Math.floor(Math.random() * 14) + 2;
+      console.log(`[FEED] Adding ${numLikes} likes to feedItem ${feedItem.id}`);
+      
+      // Shuffle users and pick unique ones
+      const shuffledUsers = [...users].sort(() => 0.5 - Math.random());
+      const likingUsers = shuffledUsers.slice(0, Math.min(numLikes, users.length));
+      
+      for (const userId of likingUsers) {
+        await addDoc(collection(db, 'likes'), {
+          feedItemId: feedItem.id,
+          userId,
+          createdAt: serverTimestamp(),
+        });
+        
+        totalLikes++;
+      }
+    }
+
+    console.log(`[FEED] ✅ Created ${totalLikes} real likes in 'likes' collection`);
+    return totalLikes;
+  } catch (error) {
+    console.error('[FEED] ❌ Error seeding likes:', error);
     throw error;
   }
 };
@@ -169,8 +229,8 @@ export const seedFeedData = async (currentUserId) => {
 
     const sampleActivities = [];
 
-    // Add diverse review posts (8 reviews)
-    for (let i = 0; i < 8 && i < randomPlaces.length; i++) {
+    // Add diverse review posts (10 reviews) - Main feed content
+    for (let i = 0; i < 10 && i < randomPlaces.length; i++) {
       const place = randomPlaces[i];
       const user = users[i % users.length];
       const review = reviewTexts[i % reviewTexts.length];
@@ -190,72 +250,49 @@ export const seedFeedData = async (currentUserId) => {
         targetName: place.name,
         rating: review.stars,
         reviewText: review.text,
-        imageUrl: place.imageUrl || place.coverImage || 'https://via.placeholder.com/400',
-        likeCount: Math.floor(Math.random() * 50) + 5,
-        commentCount: Math.floor(Math.random() * 20),
+        imageUrl: place.imageUrl || place.coverImage || 'https://images.unsplash.com/photo-1552733407-5d5c46c3bb3b?w=800',
       };
       
       console.log(`[FEED] Review will use placeId: ${activity.targetId}`);
       sampleActivities.push(activity);
     }
 
-    // Add event creation posts (6 events)
-    for (let i = 0; i < 6 && i < randomEvents.length; i++) {
-      const event = randomEvents[i];
-      const user = users[(i + 2) % users.length];
-      
-      // VALIDATION: Ensure required fields exist
-      if (!event.id || !event.title) {
-        console.error('[FEED] Invalid event data:', event);
-        continue;
-      }
+    // Add check-in posts (5 check-ins) - Like Facebook check-ins
+    const checkInTexts = [
+      'Feeling great here! 😊',
+      'Having an amazing time! 🎉',
+      'What a beautiful day! ☀️',
+      'Love this place! ❤️',
+      'Just checked in! 📍',
+    ];
 
-      const activity = {
-        userId: user.id,
-        userName: user.name,
-        action: 'created_event',
-        targetType: 'event',
-        targetId: event.id, // REAL ID from Firestore
-        targetName: event.title,
-        eventCover: event.coverImage || event.imageUrl || 'https://via.placeholder.com/400',
-        eventDate: event.date ? new Date(event.date.seconds * 1000).toLocaleDateString('vi-VN') : 'TBA',
-        eventLocation: event.city,
-        likeCount: Math.floor(Math.random() * 80) + 10,
-        commentCount: Math.floor(Math.random() * 30),
-      };
-      
-      console.log(`[FEED] Event will use eventId: ${activity.targetId}`);
-      sampleActivities.push(activity);
-    }
+    // Different Unsplash placeholder images for variety
+    const placeholderImages = [
+      'https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=800', // Mountain
+      'https://images.unsplash.com/photo-1519904981063-b0cf448d479e?w=800', // Beach
+      'https://images.unsplash.com/photo-1476514525535-07fb3b4ae5f1?w=800', // Lake
+      'https://images.unsplash.com/photo-1506260408121-e353d10b87c7?w=800', // Sunset
+      'https://images.unsplash.com/photo-1469854523086-cc02fe5d8800?w=800', // Travel
+    ];
 
-    // Add visit activities (4 visits)
-    for (let i = 8; i < 12 && i < randomPlaces.length; i++) {
-      const place = randomPlaces[i % randomPlaces.length];
-      const user = users[(i + 4) % users.length];
+    for (let i = 0; i < 5 && i < randomPlaces.length; i++) {
+      const place = randomPlaces[(i + 5) % randomPlaces.length];
+      const user = users[(i + 3) % users.length];
       
       if (!place.id || !place.name) continue;
       
-      sampleActivities.push({
+      const checkInPost = {
         userId: user.id,
         userName: user.name,
-        action: 'visited',
+        action: 'checked_in',
         targetType: 'place',
-        targetId: place.id, // REAL ID
+        targetId: place.id,
         targetName: place.name,
-      });
-    }
-
-    // Add follow activities (3 follows)
-    for (let i = 0; i < 3; i++) {
-      const user = users[(i + 5) % users.length];
-      sampleActivities.push({
-        userId: user.id,
-        userName: user.name,
-        action: 'followed',
-        targetType: 'user',
-        targetId: currentUserId,
-        targetName: 'You',
-      });
+        checkInText: checkInTexts[i % checkInTexts.length],
+        imageUrl: place.imageUrl || place.coverImage || placeholderImages[i % placeholderImages.length],
+      };
+      
+      sampleActivities.push(checkInPost);
     }
 
     // Shuffle activities to mix post types
@@ -269,23 +306,24 @@ export const seedFeedData = async (currentUserId) => {
     for (const activity of shuffled) {
       console.log(`[FEED] Adding: ${activity.action} → ${activity.targetType} → ${activity.targetId}`);
       
-      // Remove fake commentCount/likeCount - we'll show real counts
+      // Remove fake commentCount/likeCount and undefined fields
       const { commentCount, likeCount, ...cleanActivity } = activity;
       
+      // Filter out undefined values
+      const validActivity = Object.fromEntries(
+        Object.entries(cleanActivity).filter(([_, v]) => v !== undefined)
+      );
+      
       const docRef = await addDoc(collection(db, 'feed'), {
-        ...cleanActivity,
+        ...validActivity,
         timestamp: serverTimestamp(),
       });
       
-      createdFeedItems.push({ id: docRef.id, ...cleanActivity });
+      createdFeedItems.push({ id: docRef.id, ...validActivity });
     }
 
-    console.log(`[FEED] ✅ Successfully seeded ${shuffled.length} posts`);
-    
-    // Now seed real comments
-    await seedCommentsForFeed(createdFeedItems);
-    
-    console.log(`[FEED] ✅ Click any post to navigate - IDs are 100% synced!`);
+    console.log(`[FEED] ✅ Successfully seeded ${shuffled.length} feed posts`);
+    console.log(`[FEED] ✅✅✅ FEED POSTS DONE! Now click "Seed Comments" and "Seed Likes" buttons!`);
     return shuffled.length;
   } catch (error) {
     console.error('[FEED] Error seeding:', error);

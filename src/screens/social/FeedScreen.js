@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert, Share } from 'react-native';
 import { Text, Avatar, ActivityIndicator, Button, Card } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
 import { Ionicons } from '@expo/vector-icons';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, addDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { getFeedItems, seedFeedData } from '../../services/feedService';
 import { auth, db } from '../../config/firebase';
 import { COLORS, SIZES } from '../../config/constants';
@@ -13,11 +13,89 @@ import CommentModal from '../../components/CommentModal';
 function FeedPost({ item, onPress, onComment }) {
   const [liked, setLiked] = useState(false);
   const [likeCount, setLikeCount] = useState(item.likeCount || 0);
+  const [commentCount, setCommentCount] = useState(0);
 
-  const handleLike = () => {
-    setLiked(!liked);
-    setLikeCount(prev => liked ? prev - 1 : prev + 1);
-    // TODO: Save to Firestore
+  // Load real comment count
+  useEffect(() => {
+    if (!item?.id) return;
+    
+    const loadCommentCount = async () => {
+      try {
+        const q = query(
+          collection(db, 'comments'),
+          where('feedItemId', '==', item.id)
+        );
+        const snapshot = await getDocs(q);
+        setCommentCount(snapshot.docs.length);
+      } catch (error) {
+        // Collection might not exist yet
+        console.log('[FEED] Comment count error:', error.message);
+        setCommentCount(0);
+      }
+    };
+    
+    loadCommentCount();
+  }, [item?.id]);
+
+  // Load real like count
+  useEffect(() => {
+    if (!item?.id) return;
+    
+    const loadLikeCount = async () => {
+      try {
+        const q = query(
+          collection(db, 'likes'),
+          where('feedItemId', '==', item.id)
+        );
+        const snapshot = await getDocs(q);
+        setLikeCount(snapshot.docs.length);
+        
+        // Check if current user liked this post
+        const currentUserId = auth.currentUser?.uid;
+        if (currentUserId) {
+          const userLiked = snapshot.docs.some(doc => doc.data().userId === currentUserId);
+          setLiked(userLiked);
+        }
+      } catch (error) {
+        console.log('[FEED] Like count error:', error.message);
+        setLikeCount(0);
+      }
+    };
+    
+    loadLikeCount();
+  }, [item?.id]);
+
+  const handleLike = async () => {
+    const currentUserId = auth.currentUser?.uid;
+    if (!currentUserId || !item?.id) return;
+
+    try {
+      if (liked) {
+        // Unlike: delete from Firestore
+        const q = query(
+          collection(db, 'likes'),
+          where('feedItemId', '==', item.id),
+          where('userId', '==', currentUserId)
+        );
+        const snapshot = await getDocs(q);
+        snapshot.docs.forEach(doc => deleteDoc(doc.ref));
+        
+        setLiked(false);
+        setLikeCount(prev => Math.max(0, prev - 1));
+      } else {
+        // Like: add to Firestore
+        await addDoc(collection(db, 'likes'), {
+          feedItemId: item.id,
+          userId: currentUserId,
+          createdAt: serverTimestamp(),
+        });
+        
+        setLiked(true);
+        setLikeCount(prev => prev + 1);
+      }
+    } catch (error) {
+      console.error('[FEED] Error toggling like:', error);
+    }
   };
 
   const handleComment = () => {
@@ -85,9 +163,7 @@ function FeedPost({ item, onPress, onComment }) {
               <Text>{item.reviewText}</Text>
             </Card.Content>
           )}
-          {item.imageUrl && (
-            <Card.Cover source={{ uri: item.imageUrl }} style={{ marginTop: 8 }} />
-          )}
+          <Card.Cover source={{ uri: item.imageUrl }} style={{ marginTop: 8 }} />
           <Card.Actions>
             <Button 
               icon={liked ? "heart" : "heart-outline"} 
@@ -153,7 +229,39 @@ function FeedPost({ item, onPress, onComment }) {
       );
     }
 
-    // Simple activity
+    // Check-in post
+    if (item.action === 'checked_in') {
+      return (
+        <Card style={s.card} onPress={onPress}>
+          <Card.Title
+            title={item.userName || 'User'}
+            subtitle={`checked in at ${item.targetName} • ${timeAgo(item.timestamp)}`}
+            left={(props) => <Avatar.Text {...props} size={40} label={(item.userName?.[0] || 'U').toUpperCase()} />}
+          />
+          {item.checkInText && (
+            <Card.Content style={{ marginTop: 8 }}>
+              <Text>{item.checkInText}</Text>
+            </Card.Content>
+          )}
+          <Card.Cover source={{ uri: item.imageUrl }} style={{ marginTop: 8 }} />
+          <Card.Actions>
+            <Button 
+              icon={liked ? "heart" : "heart-outline"} 
+              compact 
+              onPress={handleLike}
+              textColor={liked ? "#E91E63" : undefined}
+            >
+              {likeCount > 0 ? likeCount : 'Like'}
+            </Button>
+            <Button icon="comment-outline" compact onPress={handleComment}>
+              {commentCount > 0 ? commentCount : 'Comment'}
+            </Button>
+          </Card.Actions>
+        </Card>
+      );
+    }
+
+    // Simple activity (old follow/visit - should not appear anymore)
     const actionEmoji = { followed: '👥', visited: '📍' }[item.action] || '•';
     const actionText = { followed: 'followed', visited: 'visited' }[item.action] || item.action;
 
@@ -192,18 +300,75 @@ export default function FeedScreen({ navigation }) {
     staleTime: 60 * 1000,
   });
 
-  const handleSeedData = async () => {
+  const handleSeedFeed = async () => {
     try {
       setSeeding(true);
       const count = await seedFeedData(auth.currentUser?.uid || 'current_user');
-      
-      // Force refetch to clear cache and get new data
       await refetch();
-      
-      Alert.alert('Success', `Added ${count} sample feed posts. Pull down to refresh!`);
+      Alert.alert('Success', `Added ${count} feed posts. Now seed Comments & Likes!`);
     } catch (error) {
       console.error('Seed error:', error);
-      Alert.alert('Error', error.message || 'Failed to seed data. Check console.');
+      Alert.alert('Error', error.message || 'Failed to seed feed.');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const handleSeedComments = async () => {
+    try {
+      setSeeding(true);
+      
+      const { testSeedCommentsReal } = await import('../../services/testSeed');
+      const count = await testSeedCommentsReal();
+      
+      await refetch();
+      Alert.alert('Success', `Added ${count} test comments! Check Firestore.`);
+    } catch (error) {
+      console.error('Seed comments error:', error);
+      Alert.alert('Error', error.message || 'Failed to seed comments.');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const handleSeedLikes = async () => {
+    try {
+      setSeeding(true);
+      
+      const { testSeedLikesReal } = await import('../../services/testSeed');
+      const count = await testSeedLikesReal();
+      
+      await refetch();
+      Alert.alert('Success', `Added ${count} test likes! Check Firestore.`);
+    } catch (error) {
+      console.error('Seed likes error:', error);
+      Alert.alert('Error', error.message || 'Failed to seed likes.');
+    } finally {
+      setSeeding(false);
+    }
+  };
+
+  const handleSeedNotifications = async () => {
+    try {
+      setSeeding(true);
+      
+      const { seedNotifications } = await import('../../services/notificationService');
+      
+      // Get real Firebase Auth UID
+      const realUserId = auth.currentUser?.uid;
+      console.log('[FEED] Seeding notifications for real userId:', realUserId);
+      
+      if (!realUserId) {
+        Alert.alert('Error', 'Please login first to see notifications!');
+        return;
+      }
+      
+      const count = await seedNotifications(realUserId);
+      
+      Alert.alert('Success', `Created ${count} notifications! Check dropdown.`);
+    } catch (error) {
+      console.error('Seed notifications error:', error);
+      Alert.alert('Error', error.message || 'Failed to seed notifications.');
     } finally {
       setSeeding(false);
     }
@@ -232,20 +397,69 @@ export default function FeedScreen({ navigation }) {
           <Text style={{ fontSize: 48 }}>📰</Text>
           <Text style={s.emptyText}>No activity yet</Text>
           <Text style={s.emptyHint}>Follow users to see their activity here</Text>
-          <Button mode="contained" onPress={handleSeedData} loading={seeding} style={{ marginTop: 16 }}>
-            Seed Sample Data
-          </Button>
+          <View style={{ marginTop: 16, gap: 8 }}>
+            <Button mode="contained" onPress={handleSeedFeed} loading={seeding}>
+              1. Seed Feed Posts
+            </Button>
+            <Button mode="outlined" onPress={handleSeedComments} loading={seeding}>
+              2. Seed Comments
+            </Button>
+            <Button mode="outlined" onPress={handleSeedLikes} loading={seeding}>
+              3. Seed Likes
+            </Button>
+          </View>
         </View>
       ) : (
-        <FlatList
-          data={feedItems}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <FeedPost
-              item={item}
-              onPress={() => {
-                if (item.targetType === 'place') {
-                  navigation.navigate('Discover', {
+        <View style={{ flex: 1 }}>
+          <View style={{ padding: 12, backgroundColor: '#f5f5f5', borderBottomWidth: 1, borderBottomColor: '#e0e0e0' }}>
+            <View style={{ flexDirection: 'row', gap: 8, marginBottom: 8 }}>
+              <Button 
+                mode="contained" 
+                onPress={handleSeedFeed} 
+                loading={seeding}
+                compact
+                style={{ flex: 1 }}
+              >
+                Feed
+              </Button>
+              <Button 
+                mode="outlined" 
+                onPress={handleSeedComments} 
+                loading={seeding}
+                compact
+                style={{ flex: 1 }}
+              >
+                Comments
+              </Button>
+              <Button 
+                mode="outlined" 
+                onPress={handleSeedLikes} 
+                loading={seeding}
+                compact
+                style={{ flex: 1 }}
+              >
+                Likes
+              </Button>
+            </View>
+            <Button 
+              mode="outlined" 
+              onPress={handleSeedNotifications} 
+              loading={seeding}
+              compact
+              icon="bell"
+            >
+              Seed Notifications
+            </Button>
+          </View>
+          <FlatList
+            data={feedItems}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <FeedPost
+                item={item}
+                onPress={() => {
+                  if (item.targetType === 'place') {
+                    navigation.navigate('Discover', {
                     screen: 'PlaceDetail',
                     params: { placeId: item.targetId },
                   });
@@ -263,6 +477,7 @@ export default function FeedScreen({ navigation }) {
           ItemSeparatorComponent={() => <View style={{ height: 8 }} />}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
         />
+        </View>
       )}
 
       {/* Comment Modal */}

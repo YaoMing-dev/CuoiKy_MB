@@ -20,16 +20,27 @@ export default function CommentModal({ visible, onDismiss, feedItemId, targetTyp
   const loadComments = async () => {
     try {
       setLoading(true);
+      console.log('[COMMENT] Loading comments for feedItemId:', feedItemId);
+      
       const q = query(
         collection(db, 'comments'),
-        where('feedItemId', '==', feedItemId),
-        orderBy('createdAt', 'desc')
+        where('feedItemId', '==', feedItemId)
       );
       const snapshot = await getDocs(q);
+      console.log('[COMMENT] Found comments:', snapshot.docs.length);
+      
       const items = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      // Sort in memory instead of Firestore query
+      items.sort((a, b) => {
+        const timeA = a.createdAt?.toDate?.() || new Date(0);
+        const timeB = b.createdAt?.toDate?.() || new Date(0);
+        return timeB - timeA; // Newest first
+      });
+      
       setComments(items);
+      console.log('[COMMENT] Comments loaded:', items.length);
     } catch (error) {
-      console.error('Error loading comments:', error);
+      console.error('[COMMENT] Error loading comments:', error);
     } finally {
       setLoading(false);
     }
