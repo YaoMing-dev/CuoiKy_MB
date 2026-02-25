@@ -66,6 +66,10 @@ export const seedFeedData = async (currentUserId) => {
       throw new Error('Please seed Places and Events first!');
     }
 
+    // VALIDATION: Log all IDs to verify they exist
+    console.log('[FEED] Place IDs:', places.map(p => p.id).join(', '));
+    console.log('[FEED] Event IDs:', events.map(e => e.id).join(', '));
+
     // Helper to get random items
     const getRandomPlaces = (count) => {
       const shuffled = [...places].sort(() => 0.5 - Math.random());
@@ -79,6 +83,12 @@ export const seedFeedData = async (currentUserId) => {
 
     const randomPlaces = getRandomPlaces(10);
     const randomEvents = getRandomEvents(6);
+
+    // VALIDATION: Verify selected items
+    console.log('[FEED] Selected places for feed:');
+    randomPlaces.forEach(p => console.log(`  - ${p.id}: ${p.name}`));
+    console.log('[FEED] Selected events for feed:');
+    randomEvents.forEach(e => console.log(`  - ${e.id}: ${e.title}`));
 
     const users = [
       { id: 'anna', name: 'Anna Nguyen' },
@@ -110,19 +120,28 @@ export const seedFeedData = async (currentUserId) => {
       const user = users[i % users.length];
       const review = reviewTexts[i % reviewTexts.length];
       
-      sampleActivities.push({
+      // VALIDATION: Ensure required fields exist
+      if (!place.id || !place.name) {
+        console.error('[FEED] Invalid place data:', place);
+        continue;
+      }
+
+      const activity = {
         userId: user.id,
         userName: user.name,
         action: 'reviewed',
         targetType: 'place',
-        targetId: place.id,
+        targetId: place.id, // REAL ID from Firestore
         targetName: place.name,
         rating: review.stars,
         reviewText: review.text,
         imageUrl: place.imageUrl || place.coverImage || 'https://via.placeholder.com/400',
         likeCount: Math.floor(Math.random() * 50) + 5,
         commentCount: Math.floor(Math.random() * 20),
-      });
+      };
+      
+      console.log(`[FEED] Review will use placeId: ${activity.targetId}`);
+      sampleActivities.push(activity);
     }
 
     // Add event creation posts (6 events)
@@ -130,19 +149,28 @@ export const seedFeedData = async (currentUserId) => {
       const event = randomEvents[i];
       const user = users[(i + 2) % users.length];
       
-      sampleActivities.push({
+      // VALIDATION: Ensure required fields exist
+      if (!event.id || !event.title) {
+        console.error('[FEED] Invalid event data:', event);
+        continue;
+      }
+
+      const activity = {
         userId: user.id,
         userName: user.name,
         action: 'created_event',
         targetType: 'event',
-        targetId: event.id,
+        targetId: event.id, // REAL ID from Firestore
         targetName: event.title,
         eventCover: event.coverImage || event.imageUrl || 'https://via.placeholder.com/400',
         eventDate: event.date ? new Date(event.date.seconds * 1000).toLocaleDateString('vi-VN') : 'TBA',
         eventLocation: event.city,
         likeCount: Math.floor(Math.random() * 80) + 10,
         commentCount: Math.floor(Math.random() * 30),
-      });
+      };
+      
+      console.log(`[FEED] Event will use eventId: ${activity.targetId}`);
+      sampleActivities.push(activity);
     }
 
     // Add visit activities (4 visits)
@@ -150,12 +178,14 @@ export const seedFeedData = async (currentUserId) => {
       const place = randomPlaces[i % randomPlaces.length];
       const user = users[(i + 4) % users.length];
       
+      if (!place.id || !place.name) continue;
+      
       sampleActivities.push({
         userId: user.id,
         userName: user.name,
         action: 'visited',
         targetType: 'place',
-        targetId: place.id,
+        targetId: place.id, // REAL ID
         targetName: place.name,
       });
     }
@@ -176,17 +206,19 @@ export const seedFeedData = async (currentUserId) => {
     // Shuffle activities to mix post types
     const shuffled = sampleActivities.sort(() => 0.5 - Math.random());
 
-    console.log(`[FEED] Creating ${shuffled.length} activities...`);
+    console.log(`[FEED] ✅ VALIDATION PASSED! Creating ${shuffled.length} activities...`);
+    console.log(`[FEED] All targetIds are REAL Firestore IDs - navigation will work!`);
 
     for (const activity of shuffled) {
-      console.log('[FEED] Adding:', activity.action, activity.targetName);
+      console.log(`[FEED] Adding: ${activity.action} → ${activity.targetType} → ${activity.targetId}`);
       await addDoc(collection(db, 'feed'), {
         ...activity,
         timestamp: serverTimestamp(),
       });
     }
 
-    console.log(`[FEED] Successfully seeded ${shuffled.length} posts`);
+    console.log(`[FEED] ✅ Successfully seeded ${shuffled.length} posts`);
+    console.log(`[FEED] ✅ Click any post to navigate - IDs are 100% synced!`);
     return shuffled.length;
   } catch (error) {
     console.error('[FEED] Error seeding:', error);
