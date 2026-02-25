@@ -133,6 +133,7 @@ const s = StyleSheet.create({
   dropdown: {
     width: 360,
     maxWidth: '90%',
+    minHeight: 200, // Ensure dropdown has minimum height
     maxHeight: 450,
     backgroundColor: '#fff',
     borderRadius: 12,

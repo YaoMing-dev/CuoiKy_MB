@@ -1,9 +1,10 @@
-import React from 'react';
-import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl } from 'react-native';
-import { Text, Avatar, Divider, ActivityIndicator } from 'react-native-paper';
+import React, { useState } from 'react';
+import { View, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert } from 'react-native';
+import { Text, Avatar, Divider, ActivityIndicator, Button } from 'react-native-paper';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useQuery } from '@tanstack/react-query';
-import { getFeedItems } from '../../services/feedService';
+import { getFeedItems, seedFeedData } from '../../services/feedService';
+import { auth } from '../../config/firebase';
 import { COLORS, SIZES } from '../../config/constants';
 
 const ACTION_EMOJI = {
@@ -52,11 +53,26 @@ function FeedItem({ item, onPress }) {
 }
 
 export default function FeedScreen({ navigation }) {
+  const [seeding, setSeeding] = useState(false);
+
   const { data: feedItems = [], isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['feed'],
     queryFn: () => getFeedItems(50),
     staleTime: 60 * 1000,
   });
+
+  const handleSeedData = async () => {
+    try {
+      setSeeding(true);
+      const count = await seedFeedData(auth.currentUser?.uid || 'current_user');
+      await refetch();
+      Alert.alert('Success', `Added ${count} sample feed activities`);
+    } catch (error) {
+      Alert.alert('Error', error.message);
+    } finally {
+      setSeeding(false);
+    }
+  };
 
   return (
     <SafeAreaView style={s.safe} edges={['top']}>
@@ -73,6 +89,14 @@ export default function FeedScreen({ navigation }) {
           <Text style={{ fontSize: 48 }}>📰</Text>
           <Text style={s.emptyText}>No activity yet</Text>
           <Text style={s.emptyHint}>Follow users to see their activity here</Text>
+          <Button
+            mode="contained"
+            onPress={handleSeedData}
+            loading={seeding}
+            style={{ marginTop: SIZES.lg }}
+          >
+            Seed Sample Data
+          </Button>
         </View>
       ) : (
         <FlatList

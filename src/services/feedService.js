@@ -47,3 +47,64 @@ export const getUserFeed = async (userId, limitCount = 50) => {
     return [];
   }
 };
+
+// ── Seed sample feed data ──────────────────────────────────────────────────────
+export const seedFeedData = async (currentUserId) => {
+  try {
+    const sampleActivities = [
+      {
+        userId: 'user_anna',
+        userName: 'Anna Nguyen',
+        action: 'reviewed',
+        targetType: 'place',
+        targetId: 'place_1',
+        targetName: 'Ben Thanh Market',
+      },
+      {
+        userId: 'user_john',
+        userName: 'John Smith',
+        action: 'created_event',
+        targetType: 'event',
+        targetId: 'event_1',
+        targetName: 'Street Food Tour',
+      },
+      {
+        userId: 'user_linh',
+        userName: 'Linh Tran',
+        action: 'visited',
+        targetType: 'place',
+        targetId: 'place_2',
+        targetName: 'Hoi An Ancient Town',
+      },
+      {
+        userId: 'user_mike',
+        userName: 'Mike Chen',
+        action: 'followed',
+        targetType: 'user',
+        targetId: currentUserId,
+        targetName: 'You',
+      },
+      {
+        userId: 'user_anna',
+        userName: 'Anna Nguyen',
+        action: 'created_event',
+        targetType: 'event',
+        targetId: 'event_2',
+        targetName: 'Beach Volleyball Tournament',
+      },
+    ];
+
+    for (const activity of sampleActivities) {
+      await addDoc(collection(db, 'feed'), {
+        ...activity,
+        timestamp: serverTimestamp(),
+      });
+    }
+
+    return sampleActivities.length;
+  } catch (error) {
+    console.error('Error seeding feed data:', error);
+    throw error;
+  }
+};
+
