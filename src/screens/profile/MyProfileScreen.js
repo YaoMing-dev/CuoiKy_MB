@@ -162,6 +162,9 @@ export default function MyProfileScreen({ navigation }) {
           <Button icon="account-group" mode="outlined" onPress={() => navigation.navigate('Feed')} style={styles.linkButton}>
             Social Feed
           </Button>
+          <Button icon="qrcode" mode="outlined" onPress={() => navigation.navigate('ShareQR')} style={styles.linkButton}>
+            Share QR Code
+          </Button>
           {userProfile?.role === 'admin' && (
             <Button icon="shield" mode="contained" onPress={() => navigation.navigate('AdminDashboard')} style={[styles.linkButton, styles.adminButton]}>
               Admin Dashboard
